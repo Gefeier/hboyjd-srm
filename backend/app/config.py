@@ -1,6 +1,5 @@
 from functools import lru_cache
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,15 +17,13 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 480
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/hboyjd_srm"
     redis_url: str = "redis://localhost:6379/0"
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    # 存成逗号分隔字符串,避开pydantic-settings 2.x对list[str]的JSON强制解析
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
     auto_create_tables: bool = True
 
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
-        if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
-        return value
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
 
 
 @lru_cache
