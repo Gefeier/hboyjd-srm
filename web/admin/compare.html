@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>比价与定点 · 采购中心 · 欧阳聚德供应商协同平台</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+body { background: var(--gray-50); }
+
+/* ===== Admin layout（与 admin-suppliers 一致）===== */
+.admin-shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+    padding-top: 72px;
+}
+.admin-aside {
+    position: fixed;
+    top: 72px;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    background: var(--white);
+    border-right: 1px solid var(--gray-100);
+    padding: 28px 0;
+    overflow-y: auto;
+}
+.admin-user {
+    padding: 0 24px 20px;
+    border-bottom: 1px solid var(--gray-100);
+    margin-bottom: 20px;
+}
+.admin-user .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue-600), var(--navy-700));
+    color: var(--white);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 600;
+    font-size: 15px;
+    margin-right: 10px;
+    float: left;
+}
+.admin-user .info { padding-left: 50px; }
+.admin-user .name { font-size: 14px; font-weight: 500; color: var(--navy-900); }
+.admin-user .role { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+
+.aside-group { margin-bottom: 16px; }
+.aside-group h6 {
+    font-size: 11px;
+    color: var(--gray-400);
+    font-weight: 500;
+    padding: 8px 24px;
+    text-transform: uppercase;
+}
+.aside-nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 24px;
+    font-size: 14px;
+    color: var(--gray-700);
+    transition: all 0.15s;
+    position: relative;
+    border-left: 3px solid transparent;
+}
+.aside-nav a:hover { background: var(--gray-50); color: var(--navy-900); }
+.aside-nav a.active {
+    background: var(--blue-50);
+    color: var(--blue-700);
+    font-weight: 500;
+    border-left-color: var(--blue-600);
+}
+.aside-nav a .count {
+    margin-left: auto;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    padding: 1px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 500;
+}
+.aside-nav a.active .count { background: var(--blue-600); color: var(--white); }
+
+.admin-main {
+    grid-column: 2;
+    padding: 28px 36px 80px;
+}
+
+/* ===== 询价单头部卡 ===== */
+.tender-head {
+    background: linear-gradient(135deg, var(--navy-900), var(--navy-700));
+    color: var(--white);
+    border-radius: var(--radius);
+    padding: 26px 30px;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+}
+.tender-head::after {
+    content: "";
+    position: absolute;
+    right: -40px; top: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(96,165,250,0.25), transparent 70%);
+    pointer-events: none;
+}
+.tender-head .t-crumb {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 12px;
+}
+.tender-head .t-crumb a { color: rgba(255,255,255,0.5); }
+.tender-head .t-crumb .sep { margin: 0 8px; }
+.tender-head h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.tender-head h1 .pill { font-size: 11px; }
+.tender-head .t-meta {
+    display: flex;
+    gap: 28px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    flex-wrap: wrap;
+}
+.tender-head .t-meta b { color: var(--blue-400); font-weight: 500; }
+.tender-head .t-meta .sep { color: rgba(255,255,255,0.2); }
+
+.tender-head-actions {
+    position: absolute;
+    top: 26px;
+    right: 30px;
+    display: flex;
+    gap: 8px;
+}
+.tender-head-actions .btn { padding: 7px 14px; font-size: 12px; }
+
+/* ===== 统计小条 ===== */
+.t-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 22px;
+}
+.t-stat-card {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+}
+.t-stat-card .lbl { font-size: 12px; color: var(--gray-500); margin-bottom: 6px; }
+.t-stat-card .val { font-size: 24px; font-weight: 700; color: var(--navy-900); font-variant-numeric: tabular-nums; }
+.t-stat-card .val-unit { font-size: 12px; color: var(--gray-500); margin-left: 3px; font-weight: 400; }
+.t-stat-card .sub { font-size: 11px; color: var(--ok-500); margin-top: 3px; }
+
+/* ===== 主体两栏 ===== */
+.cmp-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+}
+
+/* ===== 比价表 ===== */
+.cmp-table-wrap {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.cmp-table-head {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.cmp-table-head h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--navy-900);
+}
+.cmp-table-head h3 .hint { font-size: 12px; color: var(--gray-500); font-weight: 400; margin-left: 10px; }
+.cmp-table-head .sort-controls {
+    display: flex;
+    gap: 4px;
+    background: var(--gray-100);
+    padding: 3px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+}
+.cmp-table-head .sort-controls button {
+    padding: 5px 12px;
+    border-radius: var(--radius-pill);
+    color: var(--gray-600);
+    transition: all 0.15s;
+}
+.cmp-table-head .sort-controls button.is-active {
+    background: var(--white);
+    color: var(--blue-600);
+    font-weight: 500;
+    box-shadow: 0 1px 4px rgba(10,22,40,0.08);
+}
+
+.cmp-scroll { overflow-x: auto; }
+.cmp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 760px;
+}
+.cmp-table thead th {
+    padding: 12px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-600);
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
+    text-align: right;
+    vertical-align: bottom;
+    white-space: nowrap;
+}
+.cmp-table thead th.col-mat { text-align: left; width: 220px; }
+.cmp-table thead th.col-qty { text-align: right; width: 80px; }
+.cmp-table thead th.col-vendor { min-width: 110px; }
+.cmp-table thead th .v-name {
+    display: block;
+    font-size: 13px;
+    color: var(--navy-900);
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+.cmp-table thead th .v-grade {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--blue-600);
+    color: var(--white);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    vertical-align: middle;
+}
+.cmp-table thead th .v-grade.g-B { background: var(--blue-50); color: var(--blue-700); border: 1px solid var(--blue-400); line-height: 16px; }
+.cmp-table thead th .v-grade.g-C { background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-300); line-height: 16px; }
+
+.cmp-table tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--gray-100);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--gray-800);
+}
+.cmp-table tbody td.col-mat { text-align: left; }
+.cmp-table tbody td.col-mat .mat-name { font-weight: 500; color: var(--navy-900); }
+.cmp-table tbody td.col-mat .mat-code { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.cmp-table tbody td.col-qty { color: var(--gray-600); font-weight: 400; }
+.cmp-table tbody td.is-lowest {
+    background: var(--blue-50);
+    color: var(--blue-700);
+    font-weight: 600;
+    position: relative;
+}
+.cmp-table tbody td.is-lowest::before {
+    content: "●";
+    color: var(--blue-600);
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+}
+.cmp-table tbody tr:hover td:not(.is-lowest) { background: var(--gray-50); }
+.cmp-table tbody tr:last-child td { border-bottom: none; }
+
+.cmp-table tfoot td {
+    padding: 14px;
+    background: var(--navy-900);
+    color: var(--white);
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.cmp-table tfoot td.col-mat { text-align: left; font-size: 13px; font-weight: 500; }
+.cmp-table tfoot td.is-lowest {
+    background: linear-gradient(135deg, var(--blue-600), var(--blue-700));
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.15);
+}
+.cmp-table td.col-hover { background: var(--blue-50); }
+
+.cmp-legend {
+    padding: 14px 24px;
+    border-top: 1px solid var(--gray-100);
+    font-size: 12px;
+    color: var(--gray-500);
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    background: var(--gray-50);
+}
+.cmp-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cmp-legend .dot-blue { width: 10px; height: 10px; border-radius: 50%; background: var(--blue-600); }
+.cmp-legend .dot-navy { width: 10px; height: 10px; background: var(--navy-900); }
+
+/* ===== 供应商侧卡 ===== */
+.vendor-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.vendor-stack h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    padding: 0 4px;
+}
+.vendor-card {
+    background: var(--white);
+    border: 1.5px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+.vendor-card:hover { border-color: var(--blue-400); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.vendor-card.is-selected {
+    border-color: var(--blue-600);
+    background: var(--blue-50);
+    box-shadow: 0 12px 32px -12px rgba(37, 99, 235, 0.35);
+}
+.vendor-card.is-selected::before {
+    content: "✓";
+    position: absolute;
+    top: 14px; right: 14px;
+    width: 22px; height: 22px;
+    background: var(--blue-600);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+}
+.vendor-card .v-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.vendor-card .v-head .logo {
+    width: 34px; height: 34px;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.vendor-card .v-head .name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--navy-900);
+    line-height: 1.35;
+}
+.vendor-card .v-head .name-sub { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+
+.vendor-card .v-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed var(--gray-200);
+}
+.vendor-card .v-total .lbl {
+    font-size: 11px;
+    color: var(--gray-500);
+    margin-bottom: 4px;
+}
+.vendor-card .v-total .val {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy-900);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+.vendor-card .v-total .val.is-lowest { color: var(--blue-600); }
+.vendor-card .v-total .val-currency { font-size: 12px; color: var(--gray-500); font-weight: 400; margin-right: 3px; }
+.vendor-card .v-rank {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+.vendor-card .v-rank.is-top {
+    background: var(--blue-50);
+    color: var(--blue-700);
+    font-weight: 500;
+}
+
+.vendor-card .v-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    font-size: 12px;
+}
+.vendor-card .v-grid .cell {
+    background: var(--gray-50);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+}
+.vendor-card .v-grid .cell .l { color: var(--gray-500); font-size: 11px; margin-bottom: 2px; }
+.vendor-card .v-grid .cell .v { color: var(--navy-900); font-weight: 500; font-variant-numeric: tabular-nums; }
+.vendor-card.is-selected .v-grid .cell { background: rgba(255,255,255,0.7); }
+
+/* ===== 定标操作卡 ===== */
+.award-bar {
+    margin-top: 24px;
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 24px;
+    align-items: center;
+}
+.award-bar .award-selected {
+    padding-right: 24px;
+    border-right: 1px solid var(--gray-100);
+}
+.award-bar .award-selected .lbl {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-bottom: 6px;
+}
+.award-bar .award-selected .name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--blue-600);
+}
+.award-bar .award-reason label {
+    font-size: 12px;
+    color: var(--gray-600);
+    margin-bottom: 6px;
+    display: block;
+}
+.award-bar .award-reason textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+}
+.award-bar .award-reason textarea:focus { outline: none; border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-100); }
+.award-bar .award-actions { display: flex; gap: 10px; }
+
+@media (max-width: 1200px) {
+    .cmp-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 980px) {
+    .admin-shell { grid-template-columns: 1fr; }
+    .admin-aside { display: none; }
+    .admin-main { grid-column: 1; padding: 20px; }
+    .t-stats { grid-template-columns: 1fr 1fr; }
+    .award-bar { grid-template-columns: 1fr; gap: 14px; }
+    .award-bar .award-selected { padding-right: 0; border-right: none; border-bottom: 1px solid var(--gray-100); padding-bottom: 14px; }
+    .tender-head-actions { position: static; margin-top: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="../index.html" class="nav-logo">
+            <img src="../assets/logo-white.png" alt="欧阳聚德">
+            <span class="nav-suffix">采购中心</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="https://hboyjd.com">官网首页</a></li>
+            <li><a href="../bids.html">采购公告</a></li>
+            <li><a href="suppliers.html" class="active">采购中心</a></li>
+            <li><a href="#">帮助中心</a></li>
+        </ul>
+        <a href="#" class="nav-cta" style="background: transparent; border: 1px solid rgba(255,255,255,0.3);">
+            <span>切换到公开视图</span>
+        </a>
+    </div>
+</nav>
+
+<div class="admin-shell">
+
+    <!-- Sidebar -->
+    <aside class="admin-aside">
+        <div class="admin-user">
+            <div class="avatar">欧</div>
+            <div class="info">
+                <div class="name">欧阳经理</div>
+                <div class="role"><span class="pill pill-blue">采购主管</span></div>
+            </div>
+        </div>
+
+        <div class="aside-group">
+            <h6>供应商管理</h6>
+            <nav class="aside-nav">
+                <a href="suppliers.html"><span>合格供应商库</span><span class="count">86</span></a>
+                <a href="#"><span>入驻审核</span><span class="count">7</span></a>
+                <a href="#"><span>分级与评价</span></a>
+                <a href="#"><span>黑名单</span><span class="count">2</span></a>
+            </nav>
+        </div>
+
+        <div class="aside-group">
+            <h6>寻源与采购</h6>
+            <nav class="aside-nav">
+                <a href="#"><span>询价单管理</span><span class="count">4</span></a>
+                <a href="compare.html" class="active"><span>比价与定点</span><span class="count">1</span></a>
+                <a href="#"><span>采购订单</span></a>
+                <a href="#"><span>合同管理</span></a>
+            </nav>
+        </div>
+
+        <div class="aside-group">
+            <h6>基础资料</h6>
+            <nav class="aside-nav">
+                <a href="#"><span>物料主档</span></a>
+                <a href="#"><span>物料分类</span></a>
+                <a href="#"><span>员工与权限</span></a>
+                <a href="#"><span>消息中心</span></a>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="admin-main">
+
+        <!-- 询价单头 -->
+        <section class="tender-head">
+            <div class="t-crumb">
+                <a href="#">采购中心</a>
+                <span class="sep">/</span>
+                <a href="#">寻源与采购</a>
+                <span class="sep">/</span>
+                <a href="#">比价与定点</a>
+                <span class="sep">/</span>
+                <span>XJD20260420013774</span>
+            </div>
+            <h1>
+                五金杂项一批（紧固件 / 密封件 / 软管总成）
+                <span class="pill pill-ok pill-live">已截止 · 待定点</span>
+            </h1>
+            <div class="t-meta">
+                <span>单号 · <b>XJD20260420013774</b></span>
+                <span class="sep">|</span>
+                <span>发布 · <b>2026-04-15</b></span>
+                <span class="sep">|</span>
+                <span>截止 · <b>2026-04-19 17:00</b></span>
+                <span class="sep">|</span>
+                <span>邀标 · <b>8 家</b></span>
+                <span class="sep">|</span>
+                <span>已报价 · <b>6 家</b></span>
+                <span class="sep">|</span>
+                <span>经办人 · <b>欧阳经理</b></span>
+            </div>
+            <div class="tender-head-actions">
+                <button class="btn btn-ghost-dark btn-sm">查看明细</button>
+                <button class="btn btn-ghost-dark btn-sm">导出对比表</button>
+            </div>
+        </section>
+
+        <!-- 统计小条 -->
+        <div class="t-stats">
+            <div class="t-stat-card">
+                <div class="lbl">邀标/应标</div>
+                <div class="val num">6 <span class="val-unit">/ 8</span></div>
+                <div class="sub">75% 响应率</div>
+            </div>
+            <div class="t-stat-card">
+                <div class="lbl">最低报价</div>
+                <div class="val num">118,200 <span class="val-unit">元</span></div>
+                <div class="sub">枣阳精工五金</div>
+            </div>
+            <div class="t-stat-card">
+                <div class="lbl">报价区间</div>
+                <div class="val num">14.7<span class="val-unit">%</span></div>
+                <div class="sub">最高 ¥135,600</div>
+            </div>
+            <div class="t-stat-card">
+                <div class="lbl">预算线</div>
+                <div class="val num">125,000 <span class="val-unit">元</span></div>
+                <div class="sub">低于预算 ¥6,800</div>
+            </div>
+        </div>
+
+        <div class="cmp-layout">
+
+            <!-- 比价矩阵 -->
+            <div class="cmp-table-wrap">
+                <div class="cmp-table-head">
+                    <h3>比价矩阵 <span class="hint">6 项物料 × 4 家主报价</span></h3>
+                    <div class="sort-controls" data-sort-group>
+                        <button class="is-active" data-sort-by="total">按总价</button>
+                        <button data-sort-by="leadtime">按交期</button>
+                        <button data-sort-by="score">按评分</button>
+                    </div>
+                </div>
+                <div class="cmp-scroll">
+                    <table class="cmp-table" data-compare-table>
+                        <thead>
+                            <tr>
+                                <th class="col-mat">物料名称 · 规格</th>
+                                <th class="col-qty">数量</th>
+                                <th class="col-vendor">
+                                    <span class="v-name">枣阳精工五金 <span class="v-grade">A</span></span>
+                                </th>
+                                <th class="col-vendor">
+                                    <span class="v-name">襄阳钢铁贸易 <span class="v-grade">A</span></span>
+                                </th>
+                                <th class="col-vendor">
+                                    <span class="v-name">鑫茂电气配件 <span class="v-grade g-B">B</span></span>
+                                </th>
+                                <th class="col-vendor">
+                                    <span class="v-name">华焊外协加工 <span class="v-grade g-B">B</span></span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="col-mat">
+                                    <div class="mat-name">不锈钢内六角螺栓 M10×40</div>
+                                    <div class="mat-code">M-SC-M10-40 · 304#</div>
+                                </td>
+                                <td class="col-qty">200 个</td>
+                                <td class="is-lowest">3.20</td>
+                                <td>3.80</td>
+                                <td>3.50</td>
+                                <td>4.00</td>
+                            </tr>
+                            <tr>
+                                <td class="col-mat">
+                                    <div class="mat-name">氟橡胶密封圈 φ80×5</div>
+                                    <div class="mat-code">M-RB-F80-5 · FKM</div>
+                                </td>
+                                <td class="col-qty">150 个</td>
+                                <td>12.00</td>
+                                <td>12.50</td>
+                                <td class="is-lowest">11.80</td>
+                                <td>13.20</td>
+                            </tr>
+                            <tr>
+                                <td class="col-mat">
+                                    <div class="mat-name">高压液压软管 DN20 · 2m</div>
+                                    <div class="mat-code">M-HY-DN20-2M</div>
+                                </td>
+                                <td class="col-qty">80 条</td>
+                                <td class="is-lowest">62.50</td>
+                                <td>68.00</td>
+                                <td>65.00</td>
+                                <td>70.00</td>
+                            </tr>
+                            <tr>
+                                <td class="col-mat">
+                                    <div class="mat-name">液压快接头 1" 公</div>
+                                    <div class="mat-code">M-HY-QC-1 · 镀锌</div>
+                                </td>
+                                <td class="col-qty">100 个</td>
+                                <td class="is-lowest">28.60</td>
+                                <td>29.50</td>
+                                <td>31.20</td>
+                                <td>33.00</td>
+                            </tr>
+                            <tr>
+                                <td class="col-mat">
+                                    <div class="mat-name">车厢防滑胶垫 200×300</div>
+                                    <div class="mat-code">M-AC-RM200-300</div>
+                                </td>
+                                <td class="col-qty">60 块</td>
+                                <td>18.50</td>
+                                <td>19.20</td>
+                                <td>18.80</td>
+                                <td class="is-lowest">17.80</td>
+                            </tr>
+                            <tr>
+                                <td class="col-mat">
+                                    <div class="mat-name">货厢锁扣总成</div>
+                                    <div class="mat-code">M-LK-CS01 · 热镀锌</div>
+                                </td>
+                                <td class="col-qty">40 套</td>
+                                <td class="is-lowest">96.00</td>
+                                <td>98.50</td>
+                                <td>102.00</td>
+                                <td>108.00</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="col-mat">总价（含 13% 税）</td>
+                                <td></td>
+                                <td class="is-lowest">¥ 118,200</td>
+                                <td>¥ 128,400</td>
+                                <td>¥ 125,800</td>
+                                <td>¥ 135,600</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="cmp-legend">
+                    <span><span class="dot-blue"></span> 蓝色单元格为该物料的最低报价</span>
+                    <span>|</span>
+                    <span>点击列/行可高亮对比</span>
+                </div>
+            </div>
+
+            <!-- 供应商侧卡 -->
+            <div class="vendor-stack" data-sort-target>
+                <h3>供应商报价总览 · 排序按总价</h3>
+
+                <div class="vendor-card is-selected"
+                     data-vendor="zaoyang"
+                     data-total="118200"
+                     data-leadtime="12"
+                     data-score="91">
+                    <div class="v-head">
+                        <div class="logo" style="background: linear-gradient(135deg, #dcfce7, #f0fdf4); color: #166534;">枣精</div>
+                        <div>
+                            <div class="name" data-vendor-name>枣阳精工五金制造</div>
+                            <div class="name-sub">A 级 · 合作 4 年 · 评分 91</div>
+                        </div>
+                    </div>
+                    <div class="v-total">
+                        <div>
+                            <div class="lbl">总报价（含税）</div>
+                            <div class="val is-lowest num"><span class="val-currency">¥</span>118,200</div>
+                        </div>
+                        <span class="v-rank is-top">◆ 最低价</span>
+                    </div>
+                    <div class="v-grid">
+                        <div class="cell"><div class="l">交期</div><div class="v">12 天</div></div>
+                        <div class="cell"><div class="l">付款</div><div class="v">月结 45 天</div></div>
+                        <div class="cell"><div class="l">质保</div><div class="v">12 个月</div></div>
+                        <div class="cell"><div class="l">评分</div><div class="v">91</div></div>
+                    </div>
+                </div>
+
+                <div class="vendor-card"
+                     data-vendor="xiangyang"
+                     data-total="128400"
+                     data-leadtime="15"
+                     data-score="94">
+                    <div class="v-head">
+                        <div class="logo" style="background: linear-gradient(135deg, #dbeafe, #eff6ff); color: var(--blue-700);">襄钢</div>
+                        <div>
+                            <div class="name" data-vendor-name>襄阳钢铁贸易</div>
+                            <div class="name-sub">A 级 · 合作 6 年 · 评分 94</div>
+                        </div>
+                    </div>
+                    <div class="v-total">
+                        <div>
+                            <div class="lbl">总报价（含税）</div>
+                            <div class="val num"><span class="val-currency">¥</span>128,400</div>
+                        </div>
+                        <span class="v-rank">+8.6%</span>
+                    </div>
+                    <div class="v-grid">
+                        <div class="cell"><div class="l">交期</div><div class="v">15 天</div></div>
+                        <div class="cell"><div class="l">付款</div><div class="v">月结 60 天</div></div>
+                        <div class="cell"><div class="l">质保</div><div class="v">12 个月</div></div>
+                        <div class="cell"><div class="l">评分</div><div class="v">94</div></div>
+                    </div>
+                </div>
+
+                <div class="vendor-card"
+                     data-vendor="xinmao"
+                     data-total="125800"
+                     data-leadtime="14"
+                     data-score="82">
+                    <div class="v-head">
+                        <div class="logo" style="background: linear-gradient(135deg, #fef3c7, #fffbeb); color: #92400e;">鑫茂</div>
+                        <div>
+                            <div class="name" data-vendor-name>鑫茂电气配件</div>
+                            <div class="name-sub">B 级 · 合作 3 年 · 评分 82</div>
+                        </div>
+                    </div>
+                    <div class="v-total">
+                        <div>
+                            <div class="lbl">总报价（含税）</div>
+                            <div class="val num"><span class="val-currency">¥</span>125,800</div>
+                        </div>
+                        <span class="v-rank">+6.4%</span>
+                    </div>
+                    <div class="v-grid">
+                        <div class="cell"><div class="l">交期</div><div class="v">14 天</div></div>
+                        <div class="cell"><div class="l">付款</div><div class="v">月结 30 天</div></div>
+                        <div class="cell"><div class="l">质保</div><div class="v">6 个月</div></div>
+                        <div class="cell"><div class="l">评分</div><div class="v">82</div></div>
+                    </div>
+                </div>
+
+                <div class="vendor-card"
+                     data-vendor="huahan"
+                     data-total="135600"
+                     data-leadtime="18"
+                     data-score="78">
+                    <div class="v-head">
+                        <div class="logo" style="background: linear-gradient(135deg, #ffe4e6, #fff1f2); color: #9f1239;">华焊</div>
+                        <div>
+                            <div class="name" data-vendor-name>华焊外协加工</div>
+                            <div class="name-sub">B 级 · 合作 2 年 · 评分 78</div>
+                        </div>
+                    </div>
+                    <div class="v-total">
+                        <div>
+                            <div class="lbl">总报价（含税）</div>
+                            <div class="val num"><span class="val-currency">¥</span>135,600</div>
+                        </div>
+                        <span class="v-rank">+14.7%</span>
+                    </div>
+                    <div class="v-grid">
+                        <div class="cell"><div class="l">交期</div><div class="v">18 天</div></div>
+                        <div class="cell"><div class="l">付款</div><div class="v">月结 30 天</div></div>
+                        <div class="cell"><div class="l">质保</div><div class="v">6 个月</div></div>
+                        <div class="cell"><div class="l">评分</div><div class="v">78</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 定标操作栏 -->
+        <section class="award-bar">
+            <div class="award-selected">
+                <div class="lbl">当前定点供应商</div>
+                <div class="name" data-award-label>枣阳精工五金制造</div>
+            </div>
+            <div class="award-reason">
+                <label>定点理由（归档备案）</label>
+                <textarea placeholder="例：综合报价最低 · 交期 12 天满足排产节点 · 近 3 次交付合格率 100%"></textarea>
+            </div>
+            <div class="award-actions">
+                <button class="btn btn-ghost">存为草稿</button>
+                <button class="btn btn-primary">确认定点</button>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script src="../shared.js"></script>
+</body>
+</html>

@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线报价 · 供应商工作台 · 欧阳聚德供应商协同平台</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+body { background: var(--gray-50); }
+
+/* ===== 页面头部 ===== */
+.quote-head {
+    background: linear-gradient(135deg, var(--navy-900), var(--navy-700));
+    color: var(--white);
+    padding-top: 96px;
+    padding-bottom: 36px;
+    position: relative;
+    overflow: hidden;
+}
+.quote-head::after {
+    content: "";
+    position: absolute;
+    right: -80px; top: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(96, 165, 250, 0.2), transparent 70%);
+    pointer-events: none;
+}
+.quote-head-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 40px;
+    align-items: flex-end;
+    position: relative;
+    z-index: 2;
+}
+.quote-head .crumb {
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 14px;
+}
+.quote-head .crumb a { color: rgba(255,255,255,0.55); }
+.quote-head .crumb .sep { margin: 0 8px; color: rgba(255,255,255,0.25); }
+.quote-head h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.quote-head h1 .pill { font-size: 11px; font-weight: 500; }
+.quote-head .q-meta {
+    display: flex;
+    gap: 28px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    flex-wrap: wrap;
+}
+.quote-head .q-meta b { color: var(--blue-400); font-weight: 500; }
+.quote-head .q-meta .sep { color: rgba(255,255,255,0.2); }
+
+/* 倒计时 banner */
+.quote-cd {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    border-radius: var(--radius);
+    padding: 16px 24px;
+    min-width: 280px;
+    backdrop-filter: blur(10px);
+}
+.quote-cd .lbl {
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 8px;
+}
+.quote-cd .cd-boxes {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.quote-cd .cd-blk {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(59, 130, 246, 0.12);
+    border-radius: var(--radius-sm);
+    min-width: 48px;
+}
+.quote-cd .cd-blk b {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--blue-400);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+.quote-cd .cd-blk i {
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    font-style: normal;
+    margin-top: 4px;
+}
+.quote-cd .cd-sep { color: var(--blue-400); font-size: 18px; opacity: 0.5; }
+
+/* ===== 主体两栏 ===== */
+.quote-wrap {
+    max-width: 1400px;
+    margin: -20px auto 0;
+    padding: 0 24px 80px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 24px;
+    position: relative;
+    z-index: 3;
+}
+
+.quote-main { display: flex; flex-direction: column; gap: 20px; }
+
+/* 通用卡 */
+.q-card {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.q-card-head {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.q-card-head h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy-900);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.q-card-head h3 .dot {
+    width: 4px; height: 18px;
+    background: var(--blue-600);
+    border-radius: 2px;
+}
+.q-card-body { padding: 22px 24px; }
+
+/* 信息网格 */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+.info-cell .lbl {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-bottom: 4px;
+}
+.info-cell .val {
+    font-size: 14px;
+    color: var(--navy-900);
+    font-weight: 500;
+}
+.info-cell.wide { grid-column: span 2; }
+
+/* 技术要求 */
+.tech-req {
+    padding: 16px 20px;
+    background: var(--gray-50);
+    border-left: 3px solid var(--blue-600);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 14px;
+    color: var(--gray-700);
+    line-height: 1.8;
+}
+.tech-req ul { padding-left: 20px; }
+.tech-req li { margin-bottom: 6px; }
+
+/* 附件下载 */
+.attach-list { display: flex; flex-direction: column; gap: 8px; }
+.attach-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    transition: all 0.15s;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+.attach-item:hover { background: var(--blue-50); border-color: var(--blue-400); }
+.attach-item .ai-icon {
+    width: 36px; height: 36px;
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--blue-600);
+    font-size: 10px;
+    font-weight: 600;
+    border: 1px solid var(--gray-200);
+    flex-shrink: 0;
+}
+.attach-item .ai-name { font-size: 14px; color: var(--navy-900); font-weight: 500; flex: 1; }
+.attach-item .ai-meta { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+.attach-item .ai-dl {
+    color: var(--blue-600);
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 报价表 */
+.quote-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.quote-table thead th {
+    padding: 12px 14px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-600);
+    text-align: right;
+    white-space: nowrap;
+}
+.quote-table thead th.left { text-align: left; }
+.quote-table tbody td {
+    padding: 14px;
+    border-bottom: 1px solid var(--gray-100);
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+}
+.quote-table tbody td.left { text-align: left; }
+.quote-table tbody td.right { text-align: right; }
+.quote-table tbody td input,
+.quote-table tbody td select {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--navy-900);
+    transition: all 0.15s;
+}
+.quote-table tbody td input:focus,
+.quote-table tbody td select:focus {
+    outline: none;
+    border-color: var(--blue-500);
+    box-shadow: 0 0 0 3px var(--blue-100);
+}
+.quote-table tbody td .mat-name { font-weight: 500; color: var(--navy-900); font-size: 14px; }
+.quote-table tbody td .mat-code { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.quote-table tbody td .qty { color: var(--gray-700); font-weight: 400; }
+.quote-table tbody td .subtotal { font-weight: 600; color: var(--blue-700); }
+.quote-table tbody tr:hover td { background: var(--gray-50); }
+.quote-table tbody tr:hover td input { background: var(--white); }
+.quote-table tbody tr:last-child td { border-bottom: none; }
+.quote-table tfoot td {
+    padding: 14px;
+    background: var(--gray-50);
+    font-weight: 600;
+    color: var(--navy-900);
+    border-top: 2px solid var(--navy-900);
+}
+
+/* 补充条款表单 */
+.terms-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+}
+.terms-grid .field { margin-bottom: 0; }
+@media (max-width: 700px) { .terms-grid { grid-template-columns: 1fr; } }
+
+/* 附件上传小卡 */
+.upload-slot {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--gray-50);
+    border: 1.5px dashed var(--gray-300);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.upload-slot:hover { border-color: var(--blue-500); background: var(--blue-50); }
+.upload-slot input[type="file"] { display: none; }
+.upload-slot .u-ic {
+    width: 34px; height: 34px;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--blue-600);
+}
+.upload-slot .u-ic svg { width: 16px; height: 16px; }
+.upload-slot .u-txt { flex: 1; font-size: 14px; color: var(--gray-700); }
+.upload-slot .u-txt .sub { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+
+/* ===== 侧边 sticky ===== */
+.quote-side {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.quote-side .sticky-wrap {
+    position: sticky;
+    top: 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.side-total {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+}
+.side-total::after {
+    content: "";
+    position: absolute;
+    right: -40px; bottom: -40px;
+    width: 140px; height: 140px;
+    background: radial-gradient(circle, var(--blue-50), transparent 70%);
+    pointer-events: none;
+}
+.side-total .lbl {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-bottom: 6px;
+}
+.side-total .val {
+    font-size: 34px;
+    font-weight: 700;
+    color: var(--navy-900);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin-bottom: 14px;
+}
+.side-total .val .cur { font-size: 18px; color: var(--gray-500); font-weight: 400; margin-right: 6px; }
+.side-total .breakdown {
+    font-size: 12px;
+    color: var(--gray-500);
+    line-height: 1.9;
+    padding-top: 14px;
+    border-top: 1px dashed var(--gray-200);
+}
+.side-total .breakdown .row {
+    display: flex;
+    justify-content: space-between;
+    font-variant-numeric: tabular-nums;
+}
+.side-total .breakdown .row .v { color: var(--gray-700); }
+.side-total .breakdown .row.bold { font-weight: 600; color: var(--navy-900); margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--gray-100); }
+
+.side-status {
+    background: var(--warn-50);
+    border: 1px solid #fde68a;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+.side-status .s-ic {
+    width: 20px; height: 20px;
+    color: var(--warn-500);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.side-status .s-txt { font-size: 13px; color: #92400e; line-height: 1.6; }
+.side-status .s-txt b { display: block; font-size: 14px; margin-bottom: 4px; color: var(--warn-500); }
+
+.side-actions {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.side-actions .btn { width: 100%; justify-content: center; }
+.side-actions .hint {
+    font-size: 12px;
+    color: var(--gray-500);
+    text-align: center;
+    padding: 8px 0 0;
+    border-top: 1px dashed var(--gray-200);
+    margin-top: 4px;
+    line-height: 1.7;
+}
+.side-actions .hint b { color: var(--danger-500); }
+
+@media (max-width: 1100px) {
+    .quote-wrap { grid-template-columns: 1fr; }
+    .quote-side .sticky-wrap { position: static; }
+    .info-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px) {
+    .quote-head h1 { font-size: 22px; }
+    .quote-head-inner { grid-template-columns: 1fr; }
+    .quote-cd { min-width: 0; }
+    .info-grid { grid-template-columns: 1fr; }
+    .quote-scroll { overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo-white.png" alt="欧阳聚德">
+            <span class="nav-suffix">供应商工作台</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#">我的邀请</a></li>
+            <li><a href="#" class="active">我的报价</a></li>
+            <li><a href="#">我的订单</a></li>
+            <li><a href="#">资质管理</a></li>
+            <li><a href="#">消息中心</a></li>
+        </ul>
+        <a href="#" class="nav-cta" style="background: transparent; border: 1px solid rgba(255,255,255,0.3);">
+            <span>枣阳精工 · 退出</span>
+        </a>
+    </div>
+</nav>
+
+<!-- 询价头 -->
+<section class="quote-head">
+    <div class="quote-head-inner">
+        <div>
+            <div class="crumb">
+                <a href="#">供应商工作台</a>
+                <span class="sep">/</span>
+                <a href="#">我的邀请</a>
+                <span class="sep">/</span>
+                <span>五金杂项一批 · 报价</span>
+            </div>
+            <h1>
+                五金杂项一批（紧固件 / 密封件 / 软管总成）
+                <span class="pill pill-sky pill-live">进行中 · 未提交</span>
+            </h1>
+            <div class="q-meta">
+                <span>单号 · <b>XJD20260420013774</b></span>
+                <span class="sep">|</span>
+                <span>采购方 · <b>湖北欧阳聚德汽车</b></span>
+                <span class="sep">|</span>
+                <span>邀请时间 · <b>2026-04-15 14:20</b></span>
+                <span class="sep">|</span>
+                <span>联系人 · <b>欧阳经理 · 180****2345</b></span>
+            </div>
+        </div>
+        <div class="quote-cd">
+            <div class="lbl">距报价截止</div>
+            <div class="cd-boxes">
+                <div class="cd-blk"><b id="cd-d">4</b><i>天</i></div>
+                <span class="cd-sep">:</span>
+                <div class="cd-blk"><b id="cd-h">00</b><i>时</i></div>
+                <span class="cd-sep">:</span>
+                <div class="cd-blk"><b id="cd-m">00</b><i>分</i></div>
+                <span class="cd-sep">:</span>
+                <div class="cd-blk"><b id="cd-s">00</b><i>秒</i></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 主体 -->
+<div class="quote-wrap">
+
+    <!-- 主列 -->
+    <div class="quote-main">
+
+        <!-- 询价基础信息 -->
+        <section class="q-card">
+            <div class="q-card-head">
+                <h3><span class="dot"></span>询价基础信息</h3>
+                <span class="pill pill-gray">只读</span>
+            </div>
+            <div class="q-card-body">
+                <div class="info-grid">
+                    <div class="info-cell">
+                        <div class="lbl">物料类别</div>
+                        <div class="val">五金 / 标件</div>
+                    </div>
+                    <div class="info-cell">
+                        <div class="lbl">物料项数</div>
+                        <div class="val">6 项</div>
+                    </div>
+                    <div class="info-cell">
+                        <div class="lbl">发布时间</div>
+                        <div class="val">2026-04-15 14:15</div>
+                    </div>
+                    <div class="info-cell">
+                        <div class="lbl">报价截止</div>
+                        <div class="val">2026-04-24 17:00</div>
+                    </div>
+                    <div class="info-cell wide">
+                        <div class="lbl">交货地址</div>
+                        <div class="val">湖北省枣阳市南城工业园 · 欧阳聚德原料仓</div>
+                    </div>
+                    <div class="info-cell wide">
+                        <div class="lbl">付款方式</div>
+                        <div class="val">月结 45 天 · 银行承兑汇票 / 电汇（可议）</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 技术要求 -->
+        <section class="q-card">
+            <div class="q-card-head">
+                <h3><span class="dot"></span>技术要求与验收标准</h3>
+            </div>
+            <div class="q-card-body">
+                <div class="tech-req">
+                    <ul>
+                        <li>所有螺栓满足 GB/T 3098.1 8.8 级或以上，镀层符合 GB/T 9799 标准</li>
+                        <li>氟橡胶密封圈耐温 -30℃ ~ 150℃，硬度邵氏 A75±5，无毛刺无飞边</li>
+                        <li>高压液压软管工作压力 ≥ 27.5MPa，接头采用 GB 标准 1"公 英制牙</li>
+                        <li>供货须随附第三方质量检测报告（近 6 个月内），重点物料做到可追溯</li>
+                        <li>交付前包装按欧阳聚德《外购件包装规范》执行，外箱标注批号与合同号</li>
+                        <li>不合格品按 GB/T 2828.1 抽检标准处理，批次合格率需 ≥ 99.5%</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 附件下载 -->
+        <section class="q-card">
+            <div class="q-card-head">
+                <h3><span class="dot"></span>技术附件</h3>
+                <span class="pill pill-blue">3 个文件</span>
+            </div>
+            <div class="q-card-body">
+                <div class="attach-list">
+                    <div class="attach-item">
+                        <div class="ai-icon">PDF</div>
+                        <div style="flex: 1;">
+                            <div class="ai-name">五金杂项采购清单 · 2026Q2.pdf</div>
+                            <div class="ai-meta">2.4 MB · 2026-04-15 上传 · 含规格明细</div>
+                        </div>
+                        <a class="ai-dl">下载 ↓</a>
+                    </div>
+                    <div class="attach-item">
+                        <div class="ai-icon">DWG</div>
+                        <div style="flex: 1;">
+                            <div class="ai-name">货厢锁扣总成 · 装配图.dwg</div>
+                            <div class="ai-meta">820 KB · AutoCAD 2020 格式</div>
+                        </div>
+                        <a class="ai-dl">下载 ↓</a>
+                    </div>
+                    <div class="attach-item">
+                        <div class="ai-icon">XLSX</div>
+                        <div style="flex: 1;">
+                            <div class="ai-name">外购件包装与标识规范.xlsx</div>
+                            <div class="ai-meta">144 KB · 交付验收必读</div>
+                        </div>
+                        <a class="ai-dl">下载 ↓</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 报价明细表 -->
+        <section class="q-card">
+            <div class="q-card-head">
+                <h3><span class="dot"></span>我的报价明细</h3>
+                <span class="pill pill-blue pill-live">填写中 · 自动算合计</span>
+            </div>
+            <div class="q-card-body" style="padding: 0;">
+                <div class="quote-scroll">
+                    <table class="quote-table" data-bid-table>
+                        <thead>
+                            <tr>
+                                <th class="left">物料名称 · 规格</th>
+                                <th>数量</th>
+                                <th>含税单价（元）</th>
+                                <th>税率</th>
+                                <th>小计（元）</th>
+                                <th>交期（天）</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-row>
+                                <td class="left">
+                                    <div class="mat-name">不锈钢内六角螺栓 M10×40</div>
+                                    <div class="mat-code">M-SC-M10-40 · 304#</div>
+                                </td>
+                                <td class="right qty" data-qty>200</td>
+                                <td class="right"><input type="number" data-price value="3.20" step="0.01"></td>
+                                <td class="right"><input type="number" data-tax value="13" step="0.5"></td>
+                                <td class="right subtotal" data-subtotal>722.32</td>
+                                <td class="right"><input type="number" value="10" style="text-align: right;"></td>
+                            </tr>
+                            <tr data-row>
+                                <td class="left">
+                                    <div class="mat-name">氟橡胶密封圈 φ80×5</div>
+                                    <div class="mat-code">M-RB-F80-5 · FKM</div>
+                                </td>
+                                <td class="right qty" data-qty>150</td>
+                                <td class="right"><input type="number" data-price value="12.00" step="0.01"></td>
+                                <td class="right"><input type="number" data-tax value="13" step="0.5"></td>
+                                <td class="right subtotal" data-subtotal>2034.00</td>
+                                <td class="right"><input type="number" value="12" style="text-align: right;"></td>
+                            </tr>
+                            <tr data-row>
+                                <td class="left">
+                                    <div class="mat-name">高压液压软管 DN20 · 2m</div>
+                                    <div class="mat-code">M-HY-DN20-2M</div>
+                                </td>
+                                <td class="right qty" data-qty>80</td>
+                                <td class="right"><input type="number" data-price value="62.50" step="0.01"></td>
+                                <td class="right"><input type="number" data-tax value="13" step="0.5"></td>
+                                <td class="right subtotal" data-subtotal>5650.00</td>
+                                <td class="right"><input type="number" value="14" style="text-align: right;"></td>
+                            </tr>
+                            <tr data-row>
+                                <td class="left">
+                                    <div class="mat-name">液压快接头 1" 公</div>
+                                    <div class="mat-code">M-HY-QC-1 · 镀锌</div>
+                                </td>
+                                <td class="right qty" data-qty>100</td>
+                                <td class="right"><input type="number" data-price value="28.60" step="0.01"></td>
+                                <td class="right"><input type="number" data-tax value="13" step="0.5"></td>
+                                <td class="right subtotal" data-subtotal>3231.80</td>
+                                <td class="right"><input type="number" value="10" style="text-align: right;"></td>
+                            </tr>
+                            <tr data-row>
+                                <td class="left">
+                                    <div class="mat-name">车厢防滑胶垫 200×300</div>
+                                    <div class="mat-code">M-AC-RM200-300</div>
+                                </td>
+                                <td class="right qty" data-qty>60</td>
+                                <td class="right"><input type="number" data-price value="18.50" step="0.01"></td>
+                                <td class="right"><input type="number" data-tax value="13" step="0.5"></td>
+                                <td class="right subtotal" data-subtotal>1254.30</td>
+                                <td class="right"><input type="number" value="10" style="text-align: right;"></td>
+                            </tr>
+                            <tr data-row>
+                                <td class="left">
+                                    <div class="mat-name">货厢锁扣总成</div>
+                                    <div class="mat-code">M-LK-CS01 · 热镀锌</div>
+                                </td>
+                                <td class="right qty" data-qty>40</td>
+                                <td class="right"><input type="number" data-price value="96.00" step="0.01"></td>
+                                <td class="right"><input type="number" data-tax value="13" step="0.5"></td>
+                                <td class="right subtotal" data-subtotal>4339.20</td>
+                                <td class="right"><input type="number" value="12" style="text-align: right;"></td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="left" colspan="4">总计（含 13% 税）</td>
+                                <td class="right" style="color: var(--blue-700); font-size: 15px;"><span data-bid-total>17,231.62</span> 元</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 补充条款 -->
+        <section class="q-card">
+            <div class="q-card-head">
+                <h3><span class="dot"></span>补充条款与承诺</h3>
+            </div>
+            <div class="q-card-body">
+                <div class="terms-grid">
+                    <div class="field">
+                        <label class="field-label">整体交期 <span class="req">*</span></label>
+                        <input class="input" type="text" value="12 天内全部交付" placeholder="以最慢物料为准">
+                        <div class="field-hint">自采购订单下达起算</div>
+                    </div>
+                    <div class="field">
+                        <label class="field-label">付款条件 <span class="req">*</span></label>
+                        <select class="select">
+                            <option>月结 30 天</option>
+                            <option selected>月结 45 天</option>
+                            <option>月结 60 天</option>
+                            <option>先款后货</option>
+                            <option>30% 预付 + 尾款</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="field-label">质保期</label>
+                        <select class="select">
+                            <option>6 个月</option>
+                            <option selected>12 个月</option>
+                            <option>24 个月</option>
+                            <option>按行业标准</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field" style="margin-top: 18px;">
+                    <label class="field-label">备注说明</label>
+                    <textarea class="textarea" placeholder="如批量折扣、物流安排、技术建议等，采购员可见..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- 附件上传 -->
+        <section class="q-card">
+            <div class="q-card-head">
+                <h3><span class="dot"></span>报价附件（可选）</h3>
+            </div>
+            <div class="q-card-body" style="display: flex; flex-direction: column; gap: 10px;">
+                <label class="upload-slot">
+                    <input type="file">
+                    <div class="u-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+                    <div class="u-txt">
+                        技术方案 / 样品清单 / 检测报告
+                        <div class="sub">PDF / JPG / ZIP · 单文件 ≤ 20MB · 支持批量</div>
+                    </div>
+                </label>
+                <label class="upload-slot">
+                    <input type="file">
+                    <div class="u-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+                    <div class="u-txt">
+                        报价 Excel 底稿（采购员核算用）
+                        <div class="sub">XLSX · 加分项</div>
+                    </div>
+                </label>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- 侧栏 -->
+    <aside class="quote-side">
+        <div class="sticky-wrap">
+            <div class="side-total">
+                <div class="lbl">我的报价合计（含税）</div>
+                <div class="val"><span class="cur">¥</span><span data-bid-total>17,231.62</span></div>
+                <div class="breakdown">
+                    <div class="row"><span>含税总额</span><span class="v num">¥ 17,231.62</span></div>
+                    <div class="row"><span>税前金额</span><span class="v num">¥ 15,248.34</span></div>
+                    <div class="row"><span>税额（13%）</span><span class="v num">¥ 1,983.28</span></div>
+                    <div class="row bold"><span>最长交期</span><span class="v">14 天</span></div>
+                </div>
+            </div>
+
+            <div class="side-status">
+                <svg class="s-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <div class="s-txt">
+                    <b>报价尚未提交</b>
+                    填写完毕后请点击「确认提交」，系统将记录时间戳并锁定。截止前可重新修改，提交后不可撤回。
+                </div>
+            </div>
+
+            <div class="side-actions">
+                <button class="btn btn-primary btn-block btn-lg">确认提交报价</button>
+                <button class="btn btn-ghost btn-block">保存草稿</button>
+                <div class="hint">
+                    提交后无法撤回 · 中标结果将在定标完成后 <b>24 小时内</b> 短信告知
+                </div>
+            </div>
+        </div>
+    </aside>
+
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-inner">
+        <div class="footer-about">
+            <div class="brand">湖北欧阳聚德汽车有限公司</div>
+            <p>专业从事半挂车研发、生产与销售。全系T700C超高强度钢材，十七年制造底蕴。供应商协同平台面向全国合格供应商开放。</p>
+        </div>
+        <div>
+            <h5>供应商服务</h5>
+            <a>我的邀请</a>
+            <a>我的报价</a>
+            <a>我的订单</a>
+            <a>资质管理</a>
+        </div>
+        <div>
+            <h5>帮助</h5>
+            <a>报价指引</a>
+            <a>常见问题</a>
+            <a>联系采购</a>
+        </div>
+        <div>
+            <h5>联系我们</h5>
+            <a>采购中心 · 0710-xxxxxxx</a>
+            <a>邮箱 · purchase@hboyjd.com</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© 2026 湖北欧阳聚德汽车有限公司 · 鄂ICP备xxxxxxxx号</span>
+        <span>供应商协同平台 v0.1</span>
+    </div>
+</footer>
+
+<script src="shared.js"></script>
+<script>
+// 顶部倒计时（独立于列表倒计时）
+(function(){
+    const deadline = new Date('2026-04-24 17:00:00');
+    const d = document.getElementById('cd-d'),
+          h = document.getElementById('cd-h'),
+          m = document.getElementById('cd-m'),
+          s = document.getElementById('cd-s');
+    const fmt = n => String(n).padStart(2, '0');
+    function tick(){
+        let diff = (deadline - new Date()) / 1000;
+        if (diff <= 0) { d.textContent=h.textContent=m.textContent=s.textContent='00'; return; }
+        const dd = Math.floor(diff / 86400); diff -= dd*86400;
+        const hh = Math.floor(diff / 3600); diff -= hh*3600;
+        const mm = Math.floor(diff / 60); diff -= mm*60;
+        d.textContent = dd;
+        h.textContent = fmt(hh);
+        m.textContent = fmt(mm);
+        s.textContent = fmt(Math.floor(diff));
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>

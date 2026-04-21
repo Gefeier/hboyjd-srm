@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>采购公告 · 欧阳聚德供应商协同平台</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* ===== 筛选条 ===== */
+.filter-bar {
+    max-width: 1400px;
+    margin: -40px auto 0;
+    padding: 0 24px;
+    position: relative;
+    z-index: 5;
+}
+.filter-bar-inner {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 20px 28px;
+    box-shadow: 0 12px 36px -12px rgba(10, 22, 40, 0.15);
+    border: 1px solid var(--gray-100);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 20px;
+}
+.filter-group {
+    display: flex;
+    gap: 4px;
+    background: var(--gray-100);
+    padding: 4px;
+    border-radius: var(--radius-pill);
+}
+.filter-group button {
+    padding: 8px 18px;
+    border-radius: var(--radius-pill);
+    font-size: 14px;
+    color: var(--gray-600);
+    transition: all 0.15s ease;
+    font-weight: 400;
+}
+.filter-group button:hover { color: var(--navy-900); }
+.filter-group button.is-active {
+    background: var(--white);
+    color: var(--blue-600);
+    box-shadow: 0 2px 8px rgba(10, 22, 40, 0.08);
+    font-weight: 500;
+}
+.filter-sep { width: 1px; height: 28px; background: var(--gray-200); }
+.filter-select {
+    padding: 10px 36px 10px 14px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    background: var(--white) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>") no-repeat right 12px center;
+    appearance: none;
+    font-size: 14px;
+    color: var(--gray-700);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.filter-select:hover { border-color: var(--gray-400); }
+.filter-search {
+    flex: 1;
+    min-width: 240px;
+    padding: 10px 16px 10px 40px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-pill);
+    background: var(--white) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%2394a3b8' stroke-width='1.8' stroke-linecap='round'><circle cx='7' cy='7' r='5'/><path d='M11 11l3 3'/></svg>") no-repeat 14px center;
+    font-size: 14px;
+}
+.filter-search:focus { outline: none; border-color: var(--blue-500); box-shadow: 0 0 0 4px var(--blue-100); }
+
+/* ===== 列表 ===== */
+.bid-list {
+    max-width: 1400px;
+    margin: 40px auto 0;
+    padding: 0 24px;
+}
+.list-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--gray-100);
+}
+.list-head h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--navy-900);
+    letter-spacing: 0;
+}
+.list-head .count { color: var(--blue-600); font-weight: 700; margin-left: 8px; }
+.list-head .sort-hint { font-size: 13px; color: var(--gray-500); letter-spacing: 0; }
+
+.bid-card {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 32px;
+    align-items: center;
+    padding: 24px 28px;
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: inherit;
+}
+.bid-card:hover {
+    border-color: var(--blue-400);
+    box-shadow: 0 12px 36px -16px rgba(37, 99, 235, 0.3);
+    transform: translateY(-2px);
+}
+
+.bid-tag-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.bid-content .bid-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--navy-900);
+    line-height: 1.5;
+    margin-bottom: 10px;
+    letter-spacing: 0;
+}
+.bid-content .bid-meta {
+    display: flex; flex-wrap: wrap; gap: 18px;
+    font-size: 13px;
+    color: var(--gray-600);
+}
+.bid-content .bid-meta span { display: inline-flex; align-items: center; gap: 6px; }
+.bid-content .bid-meta .label { color: var(--gray-400); font-size: 12px; }
+.bid-content .bid-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--gray-300); }
+.bid-content .bid-code {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--gray-400);
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.bid-deadline {
+    text-align: right;
+    padding-right: 24px;
+    border-right: 1px solid var(--gray-100);
+    min-width: 160px;
+}
+.bid-deadline .lbl {
+    font-size: 11px;
+    color: var(--gray-400);
+    letter-spacing: 0;
+    margin-bottom: 6px;
+}
+.bid-deadline .date {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--navy-900);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
+}
+.countdown {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+}
+.countdown b { color: var(--blue-600); font-weight: 700; }
+.countdown i { font-style: normal; color: var(--gray-400); margin: 0 2px; font-size: 11px; }
+.countdown.is-over { color: var(--gray-400); }
+.countdown.is-over .cd-over { color: var(--gray-400); }
+
+.bid-action {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 22px;
+    background: transparent;
+    color: var(--navy-900);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-pill);
+    font-size: 14px;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+.bid-card:hover .bid-action {
+    background: var(--blue-600);
+    color: var(--white);
+    border-color: var(--blue-600);
+}
+.bid-action span:last-child { transition: transform 0.2s; }
+.bid-card:hover .bid-action span:last-child { transform: translateX(3px); }
+
+/* ===== 分页 ===== */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin: 48px 0 20px;
+}
+.page-btn {
+    min-width: 40px; height: 40px; padding: 0 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    color: var(--gray-700);
+    font-size: 14px;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+}
+.page-btn:hover { border-color: var(--blue-500); color: var(--blue-600); }
+.page-btn.is-active { background: var(--blue-600); color: var(--white); border-color: var(--blue-600); }
+.page-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+.page-info {
+    margin-left: 24px;
+    font-size: 13px;
+    color: var(--gray-500);
+    letter-spacing: 0;
+}
+
+/* ===== Stats Strip ===== */
+.stats-strip {
+    max-width: 1400px;
+    margin: 48px auto 0;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+.stat-card {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    transition: all 0.2s;
+}
+.stat-card:hover { border-color: var(--blue-400); }
+.stat-card .lbl {
+    font-size: 13px;
+    color: var(--gray-500);
+    margin-bottom: 8px;
+    letter-spacing: 0;
+}
+.stat-card .val {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--navy-900);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+}
+.stat-card .val-unit {
+    font-size: 14px;
+    color: var(--gray-500);
+    font-weight: 400;
+    margin-left: 4px;
+}
+.stat-card .trend { font-size: 12px; color: var(--ok-500); margin-top: 4px; }
+
+@media (max-width: 980px) {
+    .bid-card { grid-template-columns: 1fr; gap: 16px; }
+    .bid-deadline { text-align: left; border-right: none; border-top: 1px solid var(--gray-100); padding: 12px 0 0; }
+    .bid-action { justify-self: flex-start; }
+    .stats-strip { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo-white.png" alt="欧阳聚德">
+            <span class="nav-suffix">供应商协同平台</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="https://hboyjd.com">官网首页</a></li>
+            <li><a href="bids.html" class="active">采购公告</a></li>
+            <li><a href="#">合格供应商</a></li>
+            <li><a href="#">政策与指引</a></li>
+            <li><a href="#">帮助中心</a></li>
+        </ul>
+        <a href="register.html" class="nav-cta">
+            <span>供应商入驻</span>
+            <span>→</span>
+        </a>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="page-hero">
+    <div class="page-hero-bg" style="background-image: url('assets/team-trucks.jpg');"></div>
+    <div class="page-hero-inner">
+        <span class="page-tag">PROCUREMENT · SOURCING</span>
+        <h1 class="page-title">采购公告中心</h1>
+        <p class="page-subtitle">湖北欧阳聚德汽车有限公司面向全国合格供应商公开发布的采购需求与询价信息。所有报价须在截止时间前通过本平台提交。</p>
+        <div class="page-hero-actions">
+            <a href="register.html" class="btn btn-primary">成为合格供应商</a>
+            <a href="#" class="btn btn-outline">报价指引</a>
+        </div>
+    </div>
+</section>
+
+<!-- Filter bar -->
+<div class="filter-bar">
+    <div class="filter-bar-inner">
+        <div class="filter-group" data-filter-group>
+            <button data-filter="all" class="is-active">全部</button>
+            <button data-filter="xunjia">询价</button>
+            <button data-filter="caigou">采购</button>
+            <button data-filter="paimai">废旧处置</button>
+        </div>
+        <div class="filter-sep"></div>
+        <select class="filter-select">
+            <option>物料大类 · 全部</option>
+            <option>钢材 / 型材</option>
+            <option>五金 / 标件</option>
+            <option>电器元件</option>
+            <option>外协加工</option>
+            <option>设备备件</option>
+        </select>
+        <select class="filter-select">
+            <option>截止时间 · 全部</option>
+            <option>本周截止</option>
+            <option>本月截止</option>
+            <option>已截止</option>
+        </select>
+        <input class="filter-search" type="search" placeholder="按关键词或单号搜索…">
+    </div>
+</div>
+
+<!-- Stats Strip -->
+<div class="stats-strip">
+    <div class="stat-card">
+        <div class="lbl">进行中询价</div>
+        <div class="val num">4<span class="val-unit">条</span></div>
+    </div>
+    <div class="stat-card">
+        <div class="lbl">本周截止</div>
+        <div class="val num">3<span class="val-unit">条</span></div>
+    </div>
+    <div class="stat-card">
+        <div class="lbl">本月累计</div>
+        <div class="val num">12<span class="val-unit">条</span></div>
+    </div>
+    <div class="stat-card">
+        <div class="lbl">合格供应商</div>
+        <div class="val num">86<span class="val-unit">家</span></div>
+    </div>
+</div>
+
+<!-- List -->
+<section class="bid-list">
+    <div class="list-head">
+        <h3>最新公告 <span class="count num">4</span></h3>
+        <span class="sort-hint">按截止时间正序 · 数据更新 2026-04-20</span>
+    </div>
+
+    <a href="bid-detail.html" class="bid-card">
+        <div class="bid-content">
+            <div class="bid-tag-row">
+                <span class="pill pill-blue">询价</span>
+                <span class="pill pill-sky pill-live">进行中</span>
+            </div>
+            <div class="bid-title">一标制 · 汇川模块（变频驱动器）采购</div>
+            <div class="bid-meta">
+                <span><span class="label">采购方</span>南阳汉冶特钢有限公司</span>
+                <span class="dot"></span>
+                <span><span class="label">类别</span>电器元件</span>
+                <span class="dot"></span>
+                <span><span class="label">发布</span>2026-04-20</span>
+            </div>
+            <div class="bid-code">XJD20260420013773 · 2 项物料 · 邀标 5 家</div>
+        </div>
+        <div class="bid-deadline">
+            <div class="lbl">截止时间</div>
+            <div class="date">04-24 17:00</div>
+            <div class="countdown" data-deadline="2026-04-24 17:00:00" data-format="compact"></div>
+        </div>
+        <div class="bid-action">查看详情 <span>→</span></div>
+    </a>
+
+    <a href="bid-detail.html" class="bid-card">
+        <div class="bid-content">
+            <div class="bid-tag-row">
+                <span class="pill pill-blue">询价</span>
+                <span class="pill pill-sky pill-live">进行中</span>
+            </div>
+            <div class="bid-title">五金杂项一批（紧固件 / 密封件 / 软管总成）</div>
+            <div class="bid-meta">
+                <span><span class="label">采购方</span>西峡龙成特种材料有限公司</span>
+                <span class="dot"></span>
+                <span><span class="label">类别</span>五金 / 标件</span>
+                <span class="dot"></span>
+                <span><span class="label">发布</span>2026-04-20</span>
+            </div>
+            <div class="bid-code">XJD20260420013774 · 27 项物料 · 邀标 8 家</div>
+        </div>
+        <div class="bid-deadline">
+            <div class="lbl">截止时间</div>
+            <div class="date">04-24 17:00</div>
+            <div class="countdown" data-deadline="2026-04-24 17:00:16" data-format="compact"></div>
+        </div>
+        <div class="bid-action">查看详情 <span>→</span></div>
+    </a>
+
+    <a href="bid-detail.html" class="bid-card">
+        <div class="bid-content">
+            <div class="bid-tag-row">
+                <span class="pill pill-blue">询价</span>
+                <span class="pill pill-sky pill-live">进行中</span>
+            </div>
+            <div class="bid-title">电器元件一批 · 第二批（接触器 / 继电器 / 熔断器）</div>
+            <div class="bid-meta">
+                <span><span class="label">采购方</span>西峡龙成特种材料有限公司</span>
+                <span class="dot"></span>
+                <span><span class="label">类别</span>电器元件</span>
+                <span class="dot"></span>
+                <span><span class="label">发布</span>2026-04-20</span>
+            </div>
+            <div class="bid-code">XJD20260420013771 · 14 项物料 · 邀标 6 家</div>
+        </div>
+        <div class="bid-deadline">
+            <div class="lbl">截止时间</div>
+            <div class="date">04-24 17:00</div>
+            <div class="countdown" data-deadline="2026-04-24 17:00:03" data-format="compact"></div>
+        </div>
+        <div class="bid-action">查看详情 <span>→</span></div>
+    </a>
+
+    <a href="bid-detail.html" class="bid-card">
+        <div class="bid-content">
+            <div class="bid-tag-row">
+                <span class="pill pill-navy">采购</span>
+                <span class="pill pill-sky pill-live">进行中</span>
+            </div>
+            <div class="bid-title">治材厂区门窗改造工程 · 外协采购公告</div>
+            <div class="bid-meta">
+                <span><span class="label">采购方</span>西峡龙成冶金材料有限公司</span>
+                <span class="dot"></span>
+                <span><span class="label">类别</span>外协加工</span>
+                <span class="dot"></span>
+                <span><span class="label">发布</span>2026-04-19</span>
+            </div>
+            <div class="bid-code">ZBG20260419000218 · 含现场勘察 · 邀标 12 家</div>
+        </div>
+        <div class="bid-deadline">
+            <div class="lbl">截止时间</div>
+            <div class="date">04-24 14:30</div>
+            <div class="countdown" data-deadline="2026-04-24 14:30:00" data-format="compact"></div>
+        </div>
+        <div class="bid-action">查看详情 <span>→</span></div>
+    </a>
+
+    <div class="pagination">
+        <button class="page-btn disabled">‹</button>
+        <button class="page-btn is-active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">…</button>
+        <button class="page-btn">25</button>
+        <button class="page-btn">›</button>
+        <div class="page-info">共 122 条 · 每页 5 条</div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-inner">
+        <div class="footer-about">
+            <div class="brand">湖北欧阳聚德汽车有限公司</div>
+            <p>专业从事半挂车研发、生产与销售。全系T700C超高强度钢材，十七年制造底蕴。供应商招投标平台面向全国合格供应商开放。</p>
+        </div>
+        <div>
+            <h5>公开信息</h5>
+            <a href="bids.html">采购公告</a>
+            <a href="#">合格供应商名录</a>
+            <a href="#">定点结果公示</a>
+            <a href="#">政策与指引</a>
+        </div>
+        <div>
+            <h5>供应商服务</h5>
+            <a href="register.html">供应商入驻</a>
+            <a href="#">供应商登录</a>
+            <a href="#">入驻指引</a>
+            <a href="#">常见问题</a>
+        </div>
+        <div>
+            <h5>联系我们</h5>
+            <a>采购中心 · 0710-xxxxxxx</a>
+            <a>邮箱 · purchase@hboyjd.com</a>
+            <a>地址 · 湖北省枣阳市</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© 2026 湖北欧阳聚德汽车有限公司 · 鄂ICP备xxxxxxxx号</span>
+        <span>供应商协同平台 v0.1</span>
+    </div>
+</footer>
+
+<script src="shared.js"></script>
+</body>
+</html>

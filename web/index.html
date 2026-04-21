@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>供应商协同平台 · 湖北欧阳聚德汽车有限公司</title>
+<meta name="description" content="湖北欧阳聚德汽车有限公司供应商协同平台：供应商准入、采购询价、在线报价、定点协同。面向全国合格供应商开放。">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* ===== 首页专属 ===== */
+.home-hero {
+    position: relative;
+    padding: 180px 0 100px;
+    background: linear-gradient(135deg, var(--navy-900), var(--navy-700));
+    color: var(--white);
+    overflow: hidden;
+}
+.home-hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: url('assets/team-trucks.jpg') center / cover;
+    opacity: 0.18;
+    filter: saturate(0.8);
+}
+.home-hero-inner {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    text-align: center;
+}
+.home-tag {
+    display: inline-block;
+    padding: 6px 16px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    color: var(--blue-400);
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+}
+.home-title {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 600;
+    line-height: 1.1;
+    margin-bottom: 20px;
+}
+.home-title b { color: var(--blue-400); font-weight: 700; }
+.home-sub {
+    font-size: 18px;
+    color: rgba(255,255,255,0.7);
+    max-width: 680px;
+    margin: 0 auto 40px;
+    line-height: 1.7;
+}
+.home-cta-group {
+    display: inline-flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* ===== 快速入口卡片 ===== */
+.entry-section {
+    max-width: 1200px;
+    margin: -60px auto 80px;
+    padding: 0 24px;
+    position: relative;
+    z-index: 5;
+}
+.entry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+}
+.entry-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 36px 32px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-100);
+    transition: all 0.25s;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+}
+.entry-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--blue-100);
+}
+.entry-icon {
+    width: 52px; height: 52px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--blue-50);
+    color: var(--blue-600);
+    border-radius: var(--radius);
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+.entry-card h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--navy-900);
+    margin-bottom: 8px;
+}
+.entry-card p {
+    color: var(--gray-600);
+    font-size: 14px;
+    line-height: 1.7;
+    flex: 1;
+    margin-bottom: 20px;
+}
+.entry-link {
+    color: var(--blue-600);
+    font-weight: 500;
+    font-size: 14px;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.entry-card:hover .entry-link span:last-child { transform: translateX(4px); transition: transform 0.2s; }
+
+/* ===== 流程 ===== */
+.process-section {
+    padding: 80px 0;
+    background: var(--gray-50);
+}
+.process-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+.section-head {
+    text-align: center;
+    margin-bottom: 60px;
+}
+.section-head h2 {
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--navy-900);
+    margin-bottom: 12px;
+}
+.section-head p {
+    color: var(--gray-600);
+    font-size: 16px;
+}
+.process-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+}
+.process-step {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 32px 24px;
+    text-align: left;
+    border: 1px solid var(--gray-100);
+    position: relative;
+}
+.process-step .num {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--blue-100);
+    line-height: 1;
+    margin-bottom: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.process-step h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--navy-900);
+    margin-bottom: 8px;
+}
+.process-step p {
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.7;
+}
+
+/* ===== CTA尾 ===== */
+.tail-cta {
+    padding: 80px 24px;
+    text-align: center;
+    background: var(--navy-900);
+    color: var(--white);
+}
+.tail-cta h2 { font-size: 32px; font-weight: 600; margin-bottom: 14px; }
+.tail-cta p { color: rgba(255,255,255,0.7); margin-bottom: 28px; }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo-white.png" alt="欧阳聚德">
+            <span class="nav-suffix">供应商协同平台</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="https://hboyjd.com">官网首页</a></li>
+            <li><a href="bids.html">采购公告</a></li>
+            <li><a href="#">合格供应商</a></li>
+            <li><a href="#">政策与指引</a></li>
+            <li><a href="#">帮助中心</a></li>
+        </ul>
+        <a href="register.html" class="nav-cta">
+            <span>供应商入驻</span>
+            <span>→</span>
+        </a>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="home-hero">
+    <div class="home-hero-inner">
+        <span class="home-tag">SUPPLIER RELATIONSHIP MANAGEMENT</span>
+        <h1 class="home-title">欧阳聚德<b>供应商协同平台</b></h1>
+        <p class="home-sub">面向全国合格供应商开放。从准入注册、采购询价、在线报价到定点协同，全流程数字化。专注半挂车供应链17年。</p>
+        <div class="home-cta-group">
+            <a href="register.html" class="btn btn-primary btn-lg">成为合格供应商</a>
+            <a href="bids.html" class="btn btn-outline btn-lg">查看采购公告</a>
+        </div>
+    </div>
+</section>
+
+<!-- 三个入口卡片 -->
+<section class="entry-section">
+    <div class="entry-grid">
+        <a href="register.html" class="entry-card">
+            <div class="entry-icon">✚</div>
+            <h3>供应商入驻</h3>
+            <p>企业资质与联系信息登记，提交公司介绍与经营品类。审核通过后即可参与询价报价。</p>
+            <span class="entry-link"><span>开始注册</span><span>→</span></span>
+        </a>
+        <a href="bids.html" class="entry-card">
+            <div class="entry-icon">◎</div>
+            <h3>采购公告</h3>
+            <p>查看当前正在招询的采购需求。按物料类别、截止时间筛选，点击进入公告详情提交报价。</p>
+            <span class="entry-link"><span>浏览公告</span><span>→</span></span>
+        </a>
+        <a href="#" class="entry-card" id="supplier-login-entry">
+            <div class="entry-icon">◉</div>
+            <h3>供应商登录</h3>
+            <p>已审核通过的供应商登录自己的工作台，查看待报价公告、提交报价、查看定点结果。</p>
+            <span class="entry-link"><span>登录入口</span><span>→</span></span>
+        </a>
+    </div>
+</section>
+
+<!-- 合作流程 -->
+<section class="process-section">
+    <div class="process-inner">
+        <div class="section-head">
+            <h2>合作流程</h2>
+            <p>从注册到订单交付，四步完成对接</p>
+        </div>
+        <div class="process-grid">
+            <div class="process-step">
+                <div class="num">01</div>
+                <h4>注册准入</h4>
+                <p>填写企业资质、联系信息、经营品类，上传营业执照等证件，我方采购中心审核。</p>
+            </div>
+            <div class="process-step">
+                <div class="num">02</div>
+                <h4>接收询价</h4>
+                <p>审核通过后，与您品类匹配的采购公告将通过平台及短信通知到您。</p>
+            </div>
+            <div class="process-step">
+                <div class="num">03</div>
+                <h4>在线报价</h4>
+                <p>按公告规格在平台提交报价单，系统自动核算总价与税额，截止前可修改。</p>
+            </div>
+            <div class="process-step">
+                <div class="num">04</div>
+                <h4>定点协同</h4>
+                <p>平台按价格、供货能力、历史绩效综合评估。定点后直接对接订单、合同、对账。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 尾部CTA -->
+<section class="tail-cta">
+    <h2>面向全国合格供应商开放</h2>
+    <p>注册后由采购中心1-3个工作日内审核反馈</p>
+    <a href="register.html" class="btn btn-primary btn-lg">立即注册入驻</a>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-inner">
+        <div class="footer-about">
+            <div class="brand">湖北欧阳聚德汽车有限公司</div>
+            <p>专业从事半挂车研发、生产与销售。全系T700C超高强度钢材，十七年制造底蕴。供应商协同平台面向全国合格供应商开放。</p>
+        </div>
+        <div>
+            <h5>公开信息</h5>
+            <a href="bids.html">采购公告</a>
+            <a href="#">合格供应商名录</a>
+            <a href="#">定点结果公示</a>
+            <a href="#">政策与指引</a>
+        </div>
+        <div>
+            <h5>供应商服务</h5>
+            <a href="register.html">供应商入驻</a>
+            <a href="#">供应商登录</a>
+            <a href="#">入驻指引</a>
+            <a href="#">常见问题</a>
+        </div>
+        <div>
+            <h5>联系我们</h5>
+            <a>采购中心 · 0710-xxxxxxx</a>
+            <a>邮箱 · purchase@hboyjd.com</a>
+            <a>地址 · 湖北省枣阳市</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© 2026 湖北欧阳聚德汽车有限公司 · 鄂ICP备17030635号-1</span>
+        <span>供应商协同平台 v0.1</span>
+    </div>
+</footer>
+
+<script src="shared.js"></script>
+<script>
+// 登录入口暂时用prompt模拟，后续换登录模态框
+document.getElementById("supplier-login-entry").addEventListener("click", (e) => {
+    e.preventDefault();
+    alert("供应商登录模块建设中。\n已注册的供应商请先完成入驻审核，审核通过后开放登录。");
+});
+</script>
+</body>
+</html>

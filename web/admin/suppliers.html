@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>合格供应商库 · 采购中心 · 欧阳聚德供应商协同平台</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+body { background: var(--gray-50); }
+
+/* ===== Admin layout ===== */
+.admin-shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+    padding-top: 72px;
+}
+.admin-aside {
+    position: fixed;
+    top: 72px;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    background: var(--white);
+    border-right: 1px solid var(--gray-100);
+    padding: 28px 0;
+    overflow-y: auto;
+}
+.admin-user {
+    padding: 0 24px 20px;
+    border-bottom: 1px solid var(--gray-100);
+    margin-bottom: 20px;
+}
+.admin-user .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue-600), var(--navy-700));
+    color: var(--white);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 600;
+    font-size: 15px;
+    margin-right: 10px;
+    float: left;
+}
+.admin-user .info { padding-left: 50px; }
+.admin-user .name { font-size: 14px; font-weight: 500; color: var(--navy-900); }
+.admin-user .role { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+.admin-user .role .pill { margin-right: 4px; }
+
+.aside-group {
+    margin-bottom: 16px;
+}
+.aside-group h6 {
+    font-size: 11px;
+    color: var(--gray-400);
+    letter-spacing: 0;
+    font-weight: 500;
+    padding: 8px 24px;
+    text-transform: uppercase;
+}
+.aside-nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 24px;
+    font-size: 14px;
+    color: var(--gray-700);
+    transition: all 0.15s;
+    position: relative;
+    border-left: 3px solid transparent;
+}
+.aside-nav a:hover { background: var(--gray-50); color: var(--navy-900); }
+.aside-nav a.active {
+    background: var(--blue-50);
+    color: var(--blue-700);
+    font-weight: 500;
+    border-left-color: var(--blue-600);
+}
+.aside-nav a .count {
+    margin-left: auto;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    padding: 1px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 500;
+}
+.aside-nav a.active .count { background: var(--blue-600); color: var(--white); }
+.aside-nav a .ic { width: 16px; height: 16px; color: currentColor; flex-shrink: 0; }
+
+/* ===== Main area ===== */
+.admin-main {
+    grid-column: 2;
+    padding: 32px 40px 80px;
+}
+.crumb {
+    font-size: 13px;
+    color: var(--gray-500);
+    margin-bottom: 12px;
+    letter-spacing: 0;
+}
+.crumb a { color: var(--gray-500); }
+.crumb a:hover { color: var(--blue-600); }
+.crumb .sep { margin: 0 8px; color: var(--gray-300); }
+.crumb .current { color: var(--navy-900); font-weight: 500; }
+
+.page-head-admin {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 28px;
+}
+.page-head-admin h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--navy-900);
+    letter-spacing: 0;
+}
+.page-head-admin .sub {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--gray-600);
+}
+.page-head-admin .actions { display: flex; gap: 10px; }
+
+/* ===== Stat strip ===== */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.stat-box {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+}
+.stat-box::after {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; width: 80px; height: 80px;
+    background: radial-gradient(circle at top right, var(--blue-50), transparent 70%);
+    pointer-events: none;
+}
+.stat-box .lbl {
+    font-size: 13px;
+    color: var(--gray-500);
+    letter-spacing: 0;
+    margin-bottom: 6px;
+}
+.stat-box .val {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy-900);
+    font-variant-numeric: tabular-nums;
+}
+.stat-box .val-unit {
+    font-size: 13px;
+    color: var(--gray-500);
+    font-weight: 400;
+    margin-left: 4px;
+}
+.stat-box .delta {
+    position: absolute;
+    right: 20px; top: 22px;
+    font-size: 12px;
+    color: var(--ok-500);
+    font-weight: 500;
+}
+.stat-box .delta.minus { color: var(--danger-500); }
+.stat-box.accent-warn .val { color: var(--warn-500); }
+
+/* ===== Filter + action bar ===== */
+.toolbar {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.toolbar .filter-group {
+    display: flex;
+    gap: 4px;
+    background: var(--gray-100);
+    padding: 3px;
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+}
+.toolbar .filter-group button {
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    color: var(--gray-600);
+    transition: all 0.15s;
+}
+.toolbar .filter-group button.is-active {
+    background: var(--white);
+    color: var(--blue-600);
+    box-shadow: 0 2px 6px rgba(10, 22, 40, 0.08);
+    font-weight: 500;
+}
+.toolbar .filter-select {
+    padding: 7px 30px 7px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    background: var(--white) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' fill='none'/></svg>") no-repeat right 10px center;
+    appearance: none;
+    cursor: pointer;
+    color: var(--gray-700);
+}
+.toolbar .search {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 14px 8px 34px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    background: var(--white) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none' stroke='%2394a3b8' stroke-width='1.6'><circle cx='7' cy='7' r='5'/><path d='M11 11l3 3'/></svg>") no-repeat 10px center;
+}
+.toolbar .search:focus { outline: none; border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-100); }
+
+/* ===== Supplier table (card-row hybrid) ===== */
+.supplier-table {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.st-head {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 0.6fr 1fr 1fr 0.7fr 120px;
+    padding: 14px 24px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 12px;
+    color: var(--gray-600);
+    letter-spacing: 0;
+    font-weight: 500;
+}
+.st-row {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 0.6fr 1fr 1fr 0.7fr 120px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--gray-100);
+    align-items: center;
+    transition: background 0.15s;
+    cursor: pointer;
+}
+.st-row:hover { background: var(--blue-50); }
+.st-row:last-child { border-bottom: none; }
+.st-co {
+    display: flex; align-items: center; gap: 12px;
+}
+.st-co .logo-box {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--gray-100), var(--gray-50));
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600;
+    color: var(--navy-700);
+    font-size: 14px;
+    flex-shrink: 0;
+    letter-spacing: 0;
+}
+.st-co .logo-box.green { background: linear-gradient(135deg, #dcfce7, #f0fdf4); color: #166534; border-color: #bbf7d0; }
+.st-co .logo-box.blue { background: linear-gradient(135deg, #dbeafe, #eff6ff); color: var(--blue-700); border-color: #bfdbfe; }
+.st-co .logo-box.amber { background: linear-gradient(135deg, #fef3c7, #fffbeb); color: #92400e; border-color: #fde68a; }
+.st-co .logo-box.rose { background: linear-gradient(135deg, #ffe4e6, #fff1f2); color: #9f1239; border-color: #fecdd3; }
+.st-co .info { min-width: 0; }
+.st-co .info .name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy-900);
+    margin-bottom: 3px;
+    letter-spacing: 0;
+}
+.st-co .info .code {
+    font-size: 12px;
+    color: var(--gray-500);
+    font-variant-numeric: tabular-nums;
+}
+
+.st-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.st-tag {
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: var(--radius-pill);
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.st-grade {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0;
+}
+.st-grade.g-A { background: linear-gradient(135deg, var(--blue-600), var(--blue-700)); color: var(--white); box-shadow: var(--shadow-blue); }
+.st-grade.g-B { background: var(--blue-50); color: var(--blue-700); border: 1px solid var(--blue-400); }
+.st-grade.g-C { background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-300); }
+.st-grade.g-D { background: var(--warn-50); color: var(--warn-500); border: 1px solid var(--warn-500); }
+
+.st-last {
+    font-size: 13px;
+    color: var(--gray-700);
+    font-variant-numeric: tabular-nums;
+}
+.st-last .amount { color: var(--navy-900); font-weight: 500; }
+.st-last .time { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+.st-score {
+    display: flex; align-items: center; gap: 8px;
+    font-variant-numeric: tabular-nums;
+}
+.st-score .val { font-size: 15px; font-weight: 600; color: var(--navy-900); }
+.st-score .bar {
+    flex: 1;
+    height: 6px;
+    background: var(--gray-100);
+    border-radius: 3px;
+    overflow: hidden;
+    max-width: 60px;
+}
+.st-score .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue-500), var(--blue-700));
+    border-radius: 3px;
+}
+
+.st-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+.icon-btn {
+    width: 32px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    color: var(--gray-600);
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.icon-btn:hover { background: var(--blue-50); color: var(--blue-600); border-color: var(--blue-400); }
+.icon-btn svg { width: 14px; height: 14px; }
+
+/* table footer */
+.st-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background: var(--gray-50);
+    border-top: 1px solid var(--gray-100);
+    font-size: 13px;
+    color: var(--gray-600);
+}
+.st-pagi { display: flex; gap: 4px; }
+.st-pagi button {
+    min-width: 32px; height: 32px; padding: 0 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    color: var(--gray-700);
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.st-pagi button.is-active { background: var(--blue-600); color: var(--white); border-color: var(--blue-600); }
+
+/* hide sidebar on small screens */
+@media (max-width: 980px) {
+    .admin-shell { grid-template-columns: 1fr; }
+    .admin-aside { display: none; }
+    .admin-main { padding: 24px 20px; grid-column: 1; }
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+    .st-head, .st-row { grid-template-columns: 1.5fr 1fr auto; gap: 8px; }
+    .st-head > *:nth-child(n+4), .st-row > *:nth-child(n+4) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="../index.html" class="nav-logo">
+            <img src="../assets/logo-white.png" alt="欧阳聚德">
+            <span class="nav-suffix">采购中心</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="https://hboyjd.com">官网首页</a></li>
+            <li><a href="../bids.html">采购公告</a></li>
+            <li><a href="suppliers.html" class="active">采购中心</a></li>
+            <li><a href="#">帮助中心</a></li>
+        </ul>
+        <a href="#" class="nav-cta" style="background: transparent; border: 1px solid rgba(255,255,255,0.3);">
+            <span>切换到公开视图</span>
+        </a>
+    </div>
+</nav>
+
+<div class="admin-shell">
+
+    <!-- Sidebar -->
+    <aside class="admin-aside">
+        <div class="admin-user">
+            <div class="avatar">欧</div>
+            <div class="info">
+                <div class="name">欧阳经理</div>
+                <div class="role"><span class="pill pill-blue">采购主管</span></div>
+            </div>
+        </div>
+
+        <div class="aside-group">
+            <h6>供应商管理</h6>
+            <nav class="aside-nav">
+                <a href="suppliers.html" class="active">
+                    <span>合格供应商库</span>
+                    <span class="count">86</span>
+                </a>
+                <a href="#">
+                    <span>入驻审核</span>
+                    <span class="count">7</span>
+                </a>
+                <a href="#">
+                    <span>分级与评价</span>
+                </a>
+                <a href="#">
+                    <span>黑名单</span>
+                    <span class="count">2</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="aside-group">
+            <h6>寻源与采购</h6>
+            <nav class="aside-nav">
+                <a href="#">
+                    <span>询价单管理</span>
+                    <span class="count">4</span>
+                </a>
+                <a href="compare.html">
+                    <span>比价与定点</span>
+                </a>
+                <a href="#">
+                    <span>采购订单</span>
+                </a>
+                <a href="#">
+                    <span>合同管理</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="aside-group">
+            <h6>基础资料</h6>
+            <nav class="aside-nav">
+                <a href="#"><span>物料主档</span></a>
+                <a href="#"><span>物料分类</span></a>
+                <a href="#"><span>员工与权限</span></a>
+                <a href="#"><span>消息中心</span></a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="admin-main">
+        <div class="crumb">
+            <a href="#">采购中心</a>
+            <span class="sep">/</span>
+            <a href="#">供应商管理</a>
+            <span class="sep">/</span>
+            <span class="current">合格供应商库</span>
+        </div>
+
+        <div class="page-head-admin">
+            <div>
+                <h1>合格供应商库</h1>
+                <p class="sub">已通过资质审核的合作供应商档案。支持分级、品类、状态、关键词多维筛选。</p>
+            </div>
+            <div class="actions">
+                <button class="btn btn-ghost btn-sm">批量导入</button>
+                <button class="btn btn-ghost btn-sm">导出 Excel</button>
+                <button class="btn btn-primary btn-sm">+ 新增供应商</button>
+            </div>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-box">
+                <div class="lbl">合格供应商总数</div>
+                <div class="val num">86<span class="val-unit">家</span></div>
+                <div class="delta">+4 本月</div>
+            </div>
+            <div class="stat-box">
+                <div class="lbl">A级战略供应商</div>
+                <div class="val num">12<span class="val-unit">家</span></div>
+                <div class="delta">14%</div>
+            </div>
+            <div class="stat-box accent-warn">
+                <div class="lbl">待复审</div>
+                <div class="val num">5<span class="val-unit">家</span></div>
+            </div>
+            <div class="stat-box">
+                <div class="lbl">本月新增合作</div>
+                <div class="val num">4<span class="val-unit">家</span></div>
+                <div class="delta">+33%</div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="filter-group" data-filter-group>
+                <button data-filter="all" class="is-active">全部</button>
+                <button data-filter="A">A级</button>
+                <button data-filter="B">B级</button>
+                <button data-filter="C">C级</button>
+                <button data-filter="review">待复审</button>
+            </div>
+            <select class="filter-select">
+                <option>品类 · 全部</option>
+                <option>钢材 / 型材</option>
+                <option>五金 / 标件</option>
+                <option>电器元件</option>
+                <option>外协加工</option>
+                <option>设备备件</option>
+                <option>包材 / 辅材</option>
+            </select>
+            <select class="filter-select">
+                <option>区域 · 全部</option>
+                <option>湖北省内</option>
+                <option>华中地区</option>
+                <option>华东地区</option>
+                <option>其他</option>
+            </select>
+            <input class="search" type="search" placeholder="搜索公司名称 / 信用代码 / 联系人…">
+        </div>
+
+        <div class="supplier-table">
+            <div class="st-head">
+                <div>供应商</div>
+                <div>品类</div>
+                <div>分级</div>
+                <div>最近交易</div>
+                <div>综合评分</div>
+                <div>状态</div>
+                <div style="text-align: right;">操作</div>
+            </div>
+
+            <div class="st-row">
+                <div class="st-co">
+                    <div class="logo-box blue">襄钢</div>
+                    <div class="info">
+                        <div class="name">襄阳钢铁贸易有限公司</div>
+                        <div class="code">91420600MA4K****XH · 合作 6 年</div>
+                    </div>
+                </div>
+                <div class="st-tags">
+                    <span class="st-tag">钢材</span>
+                    <span class="st-tag">型材</span>
+                </div>
+                <div><span class="st-grade g-A">A</span></div>
+                <div class="st-last">
+                    <div class="amount num">¥ 826,400</div>
+                    <div class="time">2026-04-18</div>
+                </div>
+                <div class="st-score">
+                    <div class="bar"><div class="fill" style="width: 94%;"></div></div>
+                    <span class="val num">94</span>
+                </div>
+                <div><span class="pill pill-ok">活跃</span></div>
+                <div class="st-actions">
+                    <button class="icon-btn" title="查看档案"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="icon-btn" title="发询价"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+                    <button class="icon-btn" title="更多"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                </div>
+            </div>
+
+            <div class="st-row">
+                <div class="st-co">
+                    <div class="logo-box green">枣精</div>
+                    <div class="info">
+                        <div class="name">枣阳精工五金制造有限公司</div>
+                        <div class="code">91420683MA4R****NP · 合作 4 年</div>
+                    </div>
+                </div>
+                <div class="st-tags">
+                    <span class="st-tag">五金</span>
+                    <span class="st-tag">紧固件</span>
+                    <span class="st-tag">轴承</span>
+                </div>
+                <div><span class="st-grade g-A">A</span></div>
+                <div class="st-last">
+                    <div class="amount num">¥ 312,680</div>
+                    <div class="time">2026-04-16</div>
+                </div>
+                <div class="st-score">
+                    <div class="bar"><div class="fill" style="width: 91%;"></div></div>
+                    <span class="val num">91</span>
+                </div>
+                <div><span class="pill pill-ok">活跃</span></div>
+                <div class="st-actions">
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                </div>
+            </div>
+
+            <div class="st-row">
+                <div class="st-co">
+                    <div class="logo-box amber">鑫茂</div>
+                    <div class="info">
+                        <div class="name">鑫茂电气配件有限公司</div>
+                        <div class="code">91420100MA4Q****LY · 合作 3 年</div>
+                    </div>
+                </div>
+                <div class="st-tags">
+                    <span class="st-tag">电器元件</span>
+                    <span class="st-tag">继电器</span>
+                </div>
+                <div><span class="st-grade g-B">B</span></div>
+                <div class="st-last">
+                    <div class="amount num">¥ 148,900</div>
+                    <div class="time">2026-04-12</div>
+                </div>
+                <div class="st-score">
+                    <div class="bar"><div class="fill" style="width: 82%;"></div></div>
+                    <span class="val num">82</span>
+                </div>
+                <div><span class="pill pill-ok">活跃</span></div>
+                <div class="st-actions">
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                </div>
+            </div>
+
+            <div class="st-row">
+                <div class="st-co">
+                    <div class="logo-box rose">华焊</div>
+                    <div class="info">
+                        <div class="name">华焊外协加工服务中心</div>
+                        <div class="code">91420600MA4W****DS · 合作 2 年</div>
+                    </div>
+                </div>
+                <div class="st-tags">
+                    <span class="st-tag">外协加工</span>
+                    <span class="st-tag">焊接</span>
+                    <span class="st-tag">涂装</span>
+                </div>
+                <div><span class="st-grade g-B">B</span></div>
+                <div class="st-last">
+                    <div class="amount num">¥ 96,340</div>
+                    <div class="time">2026-04-08</div>
+                </div>
+                <div class="st-score">
+                    <div class="bar"><div class="fill" style="width: 78%;"></div></div>
+                    <span class="val num">78</span>
+                </div>
+                <div><span class="pill pill-warn">待复审</span></div>
+                <div class="st-actions">
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                </div>
+            </div>
+
+            <div class="st-row">
+                <div class="st-co">
+                    <div class="logo-box blue">恒达</div>
+                    <div class="info">
+                        <div class="name">恒达橡胶密封件厂</div>
+                        <div class="code">91421000MA4P****GM · 合作 5 年</div>
+                    </div>
+                </div>
+                <div class="st-tags">
+                    <span class="st-tag">密封件</span>
+                    <span class="st-tag">橡胶</span>
+                </div>
+                <div><span class="st-grade g-B">B</span></div>
+                <div class="st-last">
+                    <div class="amount num">¥ 42,180</div>
+                    <div class="time">2026-03-28</div>
+                </div>
+                <div class="st-score">
+                    <div class="bar"><div class="fill" style="width: 76%;"></div></div>
+                    <span class="val num">76</span>
+                </div>
+                <div><span class="pill pill-ok">活跃</span></div>
+                <div class="st-actions">
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                </div>
+            </div>
+
+            <div class="st-row">
+                <div class="st-co">
+                    <div class="logo-box green">丰顺</div>
+                    <div class="info">
+                        <div class="name">丰顺物流运输有限公司</div>
+                        <div class="code">91420600MA4T****EB · 合作 3 年</div>
+                    </div>
+                </div>
+                <div class="st-tags">
+                    <span class="st-tag">物流</span>
+                    <span class="st-tag">整车运输</span>
+                </div>
+                <div><span class="st-grade g-C">C</span></div>
+                <div class="st-last">
+                    <div class="amount num">¥ 28,600</div>
+                    <div class="time">2026-03-20</div>
+                </div>
+                <div class="st-score">
+                    <div class="bar"><div class="fill" style="width: 68%;"></div></div>
+                    <span class="val num">68</span>
+                </div>
+                <div><span class="pill pill-gray">低频</span></div>
+                <div class="st-actions">
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+                    <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                </div>
+            </div>
+
+            <div class="st-foot">
+                <span>共 <b class="num">86</b> 家 · 每页 10 条</span>
+                <div class="st-pagi">
+                    <button>‹</button>
+                    <button class="is-active">1</button>
+                    <button>2</button>
+                    <button>3</button>
+                    <button>…</button>
+                    <button>9</button>
+                    <button>›</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="../shared.js"></script>
+</body>
+</html>
