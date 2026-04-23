@@ -103,6 +103,7 @@ function initAuthNav() {
     // 菜单项按角色不同
     const menuItems = user.role === "supplier" ? [
         { icon: ICON.home, label: "我的工作台", href: P + "dashboard.html" },
+        { icon: ICON.users, label: "完善企业资料", href: P + "profile.html" },
         { icon: ICON.doc, label: "采购公告", href: P + "bids.html" },
         { icon: ICON.globe, label: "平台门户", href: P + "index.html" },
         { divider: true },

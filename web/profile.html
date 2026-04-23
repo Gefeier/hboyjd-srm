@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>供应商入驻 · 欧阳聚德供应商协同平台</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+body { background: var(--gray-50); }
+
+/* ===== 入驻页 ===== */
+.reg-wrap {
+    max-width: 960px;
+    margin: 40px auto 80px;
+    padding: 0 24px;
+}
+.reg-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gray-500);
+    font-size: 14px;
+    margin-bottom: 18px;
+    transition: color 0.15s;
+}
+.reg-back:hover { color: var(--blue-600); }
+
+.reg-head {
+    text-align: center;
+    margin-bottom: 36px;
+}
+.reg-head .eyebrow {
+    display: inline-block;
+    padding: 5px 14px;
+    background: var(--blue-50);
+    color: var(--blue-700);
+    font-size: 12px;
+    border-radius: var(--radius-pill);
+    margin-bottom: 14px;
+    font-weight: 500;
+}
+.reg-head h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--navy-900);
+    margin-bottom: 10px;
+}
+.reg-head p {
+    color: var(--gray-600);
+    font-size: 15px;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.7;
+}
+
+/* ===== 步骤条 ===== */
+.steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 24px 32px;
+    margin-bottom: 24px;
+    position: relative;
+}
+.step-stamp {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+.step-stamp .step-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+    color: var(--gray-400);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 15px;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+}
+.step-stamp .step-label {
+    font-size: 14px;
+    color: var(--gray-500);
+    font-weight: 400;
+    transition: color 0.25s;
+}
+.step-stamp.is-active .step-dot {
+    background: var(--blue-600);
+    border-color: var(--blue-600);
+    color: var(--white);
+    box-shadow: 0 0 0 6px var(--blue-100);
+}
+.step-stamp.is-active .step-label { color: var(--navy-900); font-weight: 600; }
+.step-stamp.is-done .step-dot {
+    background: var(--ok-500);
+    border-color: var(--ok-500);
+    color: var(--white);
+}
+.step-stamp.is-done .step-label { color: var(--gray-700); }
+.step-line {
+    flex: 1;
+    height: 2px;
+    background: var(--gray-200);
+    margin: 0 16px;
+    position: relative;
+}
+.step-line.is-done { background: var(--ok-500); }
+
+/* ===== 表单卡 ===== */
+.reg-card {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 36px 40px;
+    box-shadow: var(--shadow-sm);
+}
+.form-step { display: none; }
+.form-step.is-active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.step-intro {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--gray-100);
+}
+.step-intro h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--navy-900);
+    margin-bottom: 6px;
+}
+.step-intro p {
+    color: var(--gray-600);
+    font-size: 14px;
+}
+
+/* 资质上传卡 */
+.upload-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+.upload-card {
+    position: relative;
+    padding: 28px 20px;
+    background: var(--gray-50);
+    border: 2px dashed var(--gray-300);
+    border-radius: var(--radius);
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.upload-card:hover { border-color: var(--blue-500); background: var(--blue-50); }
+.upload-card input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.upload-card .u-icon {
+    width: 44px; height: 44px;
+    margin: 0 auto 12px;
+    background: var(--white);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--blue-600);
+    border: 1px solid var(--gray-200);
+}
+.upload-card .u-icon svg { width: 20px; height: 20px; }
+.upload-card .u-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--navy-900);
+    margin-bottom: 6px;
+}
+.upload-card .u-hint {
+    font-size: 12px;
+    color: var(--gray-500);
+}
+.upload-card.is-uploaded {
+    background: var(--ok-50);
+    border-style: solid;
+    border-color: var(--ok-500);
+}
+.upload-card.is-uploaded .u-icon { background: var(--ok-500); color: var(--white); }
+.upload-card.is-uploaded .u-hint { color: var(--ok-500); font-weight: 500; }
+.upload-card .u-req {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--danger-50);
+    color: var(--danger-500);
+    font-size: 10px;
+    border-radius: 3px;
+    margin-left: 4px;
+}
+.upload-filename { display: none; font-size: 11px; color: var(--gray-600); margin-top: 6px; word-break: break-all; }
+.upload-card.is-uploaded .upload-filename { display: block; }
+
+/* 底部操作栏 */
+.reg-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--gray-100);
+}
+.reg-foot .hint { font-size: 13px; color: var(--gray-500); }
+.reg-foot .actions { display: flex; gap: 10px; }
+
+/* 品类选择 */
+.cat-section { margin-bottom: 28px; }
+.cat-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--navy-900);
+    margin-bottom: 12px;
+}
+
+/* 提示卡 */
+.info-stripe {
+    background: var(--blue-50);
+    border: 1px solid var(--blue-100);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--blue-700);
+    margin-bottom: 24px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    line-height: 1.7;
+}
+.info-stripe .icon {
+    width: 18px; height: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+@media (max-width: 760px) {
+    .reg-wrap { padding: 0 16px; }
+    .reg-card { padding: 24px 20px; }
+    .steps { padding: 16px; overflow-x: auto; flex-wrap: nowrap; }
+    .step-stamp .step-label { display: none; }
+    .upload-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo-white.png" alt="欧阳聚德">
+            <span class="nav-suffix">供应商协同平台</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="https://hboyjd.com">官网首页</a></li>
+            <li><a href="bids.html">采购公告</a></li>
+            <li><a href="#">合格供应商</a></li>
+            <li><a href="#">政策与指引</a></li>
+            <li><a href="#">帮助中心</a></li>
+        </ul>
+        <a href="login.html" class="nav-cta" style="background: transparent; border: 1px solid rgba(255,255,255,0.3);">
+            <span>已注册？登录</span>
+        </a>
+    </div>
+</nav>
+
+<div style="padding-top: 72px;"></div>
+
+<div class="reg-wrap" data-wizard data-current="1">
+    <a href="dashboard.html" class="reg-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        返回我的工作台
+    </a>
+
+    <div class="reg-head">
+        <span class="eyebrow">PROFILE · COMPLETION</span>
+        <h1>完善企业资料</h1>
+        <p>填完 4 步资质信息并提交审核。采购中心在 1-3 个工作日内审核，通过后您将解锁采购公告参与与在线报价功能。</p>
+    </div>
+
+    <!-- 步骤条 -->
+    <div class="steps">
+        <div class="step-stamp is-active" data-stamp-step="1">
+            <div class="step-dot">1</div>
+            <div class="step-label">企业信息</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-stamp" data-stamp-step="2">
+            <div class="step-dot">2</div>
+            <div class="step-label">联系人</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-stamp" data-stamp-step="3">
+            <div class="step-dot">3</div>
+            <div class="step-label">资质上传</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-stamp" data-stamp-step="4">
+            <div class="step-dot">4</div>
+            <div class="step-label">供应品类</div>
+        </div>
+
+        <!-- 表单卡 -->
+        <div style="width: 100%; order: 99;"></div>
+    </div>
+
+    <div class="reg-card">
+        <!-- Step 1: 企业信息 -->
+        <div class="form-step is-active" data-step="1">
+            <div class="step-intro">
+                <h2>企业基本信息</h2>
+                <p>请按营业执照如实填写，提交后企业信息不可修改。</p>
+            </div>
+
+            <div class="info-stripe">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <span>统一社会信用代码 18 位，系统将自动核验工商信息。请保证法人姓名、公司名称与营业执照完全一致。</span>
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">公司全称 <span class="req">*</span></label>
+                    <input class="input" type="text" placeholder="例：枣阳精工五金制造有限公司">
+                </div>
+                <div class="field">
+                    <label class="field-label">统一社会信用代码 <span class="req">*</span></label>
+                    <input class="input" type="text" placeholder="18 位，如 91420683MA4R...">
+                </div>
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">法定代表人 <span class="req">*</span></label>
+                    <input class="input" type="text" placeholder="法人姓名">
+                </div>
+                <div class="field">
+                    <label class="field-label">成立日期 <span class="req">*</span></label>
+                    <input class="input" type="date">
+                </div>
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">注册地 <span class="req">*</span></label>
+                    <input class="input" type="text" placeholder="详细到区/县">
+                </div>
+                <div class="field">
+                    <label class="field-label">注册资本（万元）</label>
+                    <input class="input" type="number" placeholder="填写数字">
+                </div>
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">企业类型</label>
+                    <select class="select">
+                        <option>请选择</option>
+                        <option>有限责任公司</option>
+                        <option>股份有限公司</option>
+                        <option>个体工商户</option>
+                        <option>合伙企业</option>
+                        <option>独资企业</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label">纳税人身份</label>
+                    <select class="select">
+                        <option>请选择</option>
+                        <option>一般纳税人</option>
+                        <option>小规模纳税人</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="field-label">主营业务简介</label>
+                <textarea class="textarea" placeholder="用 100 字内介绍贵司主要产品/工艺/产能优势"></textarea>
+                <div class="field-hint">后续询价邀请时供采购员快速了解。</div>
+            </div>
+        </div>
+
+        <!-- Step 2: 联系人 -->
+        <div class="form-step" data-step="2">
+            <div class="step-intro">
+                <h2>业务联系人</h2>
+                <p>填写主要对接人信息，用于接收询价通知、定标结果和订单消息。</p>
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">联系人姓名 <span class="req">*</span></label>
+                    <input class="input" type="text" placeholder="建议填写销售负责人">
+                </div>
+                <div class="field">
+                    <label class="field-label">职位/部门</label>
+                    <input class="input" type="text" placeholder="例：销售经理">
+                </div>
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">手机号 <span class="req">*</span></label>
+                    <input class="input" type="tel" placeholder="11位手机号，用于接收询价短信">
+                </div>
+                <div class="field">
+                    <label class="field-label">邮箱 <span class="req">*</span></label>
+                    <input class="input" type="email" placeholder="用于接收报价确认与定标通知">
+                </div>
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">座机</label>
+                    <input class="input" type="text" placeholder="区号-号码">
+                </div>
+                <div class="field">
+                    <label class="field-label">微信（可选）</label>
+                    <input class="input" type="text" placeholder="方便快速沟通">
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Step 3: 资质上传 -->
+        <div class="form-step" data-step="3">
+            <div class="step-intro">
+                <h2>资质证件上传</h2>
+                <p>支持 JPG/PNG/PDF 格式，单个文件不超过 10MB。带红色必填标记的为必传项，其余为加分项。</p>
+            </div>
+
+            <div class="upload-grid">
+                <div class="upload-card">
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf">
+                    <div class="u-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                    <div class="u-name">营业执照 <span class="u-req">必传</span></div>
+                    <div class="u-hint">最新年检版本，清晰无遮挡</div>
+                    <div class="upload-filename"></div>
+                </div>
+
+                <div class="upload-card">
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf">
+                    <div class="u-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M7 3h10M8 10h8M8 14h5"/></svg>
+                    </div>
+                    <div class="u-name">开户许可证 <span class="u-req">必传</span></div>
+                    <div class="u-hint">对公账户，用于后续结算</div>
+                    <div class="upload-filename"></div>
+                </div>
+
+                <div class="upload-card">
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf">
+                    <div class="u-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10M4 7l8 4 8-4"/></svg>
+                    </div>
+                    <div class="u-name">一般纳税人证明</div>
+                    <div class="u-hint">小规模纳税人可不传</div>
+                    <div class="upload-filename"></div>
+                </div>
+
+                <div class="upload-card">
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf">
+                    <div class="u-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.66 0 3.21.45 4.55 1.24"/></svg>
+                    </div>
+                    <div class="u-name">ISO 9001 质量体系</div>
+                    <div class="u-hint">加分项，有则上传</div>
+                    <div class="upload-filename"></div>
+                </div>
+
+                <div class="upload-card">
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf">
+                    <div class="u-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                    </div>
+                    <div class="u-name">行业准入/特种经营</div>
+                    <div class="u-hint">如涉及特种设备、危化品等</div>
+                    <div class="upload-filename"></div>
+                </div>
+
+                <div class="upload-card">
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf">
+                    <div class="u-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+                    </div>
+                    <div class="u-name">合作案例/业绩证明</div>
+                    <div class="u-hint">近两年主要客户合同/供货清单</div>
+                    <div class="upload-filename"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: 供应品类 -->
+        <div class="form-step" data-step="4">
+            <div class="step-intro">
+                <h2>供应品类声明</h2>
+                <p>勾选贵司能稳定供应的品类，至少选择 1 项。采购部发布询价时将按品类智能匹配。</p>
+            </div>
+
+            <div class="info-stripe">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <span>声明后请如实供货，采购部会对入库物料做 SKU 核验。虚报品类将进入黑名单并取消合作资格。</span>
+            </div>
+
+            <div class="cat-section">
+                <h3>◆ 钢材 / 型材</h3>
+                <div class="check-card-grid">
+                    <label class="check-card"><input type="checkbox"><span>T700C 高强钢板</span></label>
+                    <label class="check-card"><input type="checkbox"><span>热轧/冷轧板卷</span></label>
+                    <label class="check-card"><input type="checkbox"><span>工字钢 / H 型钢</span></label>
+                    <label class="check-card"><input type="checkbox"><span>方管 / 圆管</span></label>
+                    <label class="check-card"><input type="checkbox"><span>角钢 / 槽钢</span></label>
+                </div>
+            </div>
+
+            <div class="cat-section">
+                <h3>◆ 五金 / 标件</h3>
+                <div class="check-card-grid">
+                    <label class="check-card"><input type="checkbox"><span>高强度螺栓</span></label>
+                    <label class="check-card"><input type="checkbox"><span>轴承总成</span></label>
+                    <label class="check-card"><input type="checkbox"><span>密封件 / 橡塑件</span></label>
+                    <label class="check-card"><input type="checkbox"><span>液压软管</span></label>
+                    <label class="check-card"><input type="checkbox"><span>卡扣 / 锁具</span></label>
+                </div>
+            </div>
+
+            <div class="cat-section">
+                <h3>◆ 电器元件</h3>
+                <div class="check-card-grid">
+                    <label class="check-card"><input type="checkbox"><span>变频器 / 驱动模块</span></label>
+                    <label class="check-card"><input type="checkbox"><span>接触器 / 继电器</span></label>
+                    <label class="check-card"><input type="checkbox"><span>熔断器 / 断路器</span></label>
+                    <label class="check-card"><input type="checkbox"><span>连接器 / 端子</span></label>
+                </div>
+            </div>
+
+            <div class="cat-section">
+                <h3>◆ 外协加工</h3>
+                <div class="check-card-grid">
+                    <label class="check-card"><input type="checkbox"><span>激光切割</span></label>
+                    <label class="check-card"><input type="checkbox"><span>数控折弯</span></label>
+                    <label class="check-card"><input type="checkbox"><span>焊接组装</span></label>
+                    <label class="check-card"><input type="checkbox"><span>喷涂 / 电镀</span></label>
+                    <label class="check-card"><input type="checkbox"><span>机加工</span></label>
+                </div>
+            </div>
+
+            <div class="cat-section">
+                <h3>◆ 其他</h3>
+                <div class="check-card-grid">
+                    <label class="check-card"><input type="checkbox"><span>设备备件</span></label>
+                    <label class="check-card"><input type="checkbox"><span>包材 / 辅料</span></label>
+                    <label class="check-card"><input type="checkbox"><span>物流运输</span></label>
+                    <label class="check-card"><input type="checkbox"><span>办公 / 劳保</span></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Foot -->
+        <div class="reg-foot">
+            <span class="hint">◆ 带 <span style="color: var(--danger-500);">*</span> 为必填项 · 资料将加密保存并仅限采购部审阅</span>
+            <div class="actions">
+                <button class="btn btn-ghost" data-wizard-prev>← 上一步</button>
+                <button class="btn btn-primary" data-wizard-next>下一步 →</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-inner">
+        <div class="footer-about">
+            <div class="brand">湖北欧阳聚德汽车有限公司</div>
+            <p>专业从事半挂车研发、生产与销售。全系T700C超高强度钢材，十七年制造底蕴。供应商招投标平台面向全国合格供应商开放。</p>
+        </div>
+        <div>
+            <h5>公开信息</h5>
+            <a href="bids.html">采购公告</a>
+            <a href="#">合格供应商名录</a>
+            <a href="#">定点结果公示</a>
+            <a href="#">政策与指引</a>
+        </div>
+        <div>
+            <h5>供应商服务</h5>
+            <a href="register.html">供应商入驻</a>
+            <a href="login.html">供应商登录</a>
+            <a href="#">入驻指引</a>
+            <a href="#">常见问题</a>
+        </div>
+        <div>
+            <h5>联系我们</h5>
+            <a>采购中心 · 0710-xxxxxxx</a>
+            <a>邮箱 · purchase@hboyjd.com</a>
+            <a>地址 · 湖北省枣阳市</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© 2026 湖北欧阳聚德汽车有限公司 · 鄂ICP备xxxxxxxx号</span>
+        <span>供应商协同平台 v0.1</span>
+    </div>
+</footer>
+
+<script src="shared.js"></script>
+<script>
+/* ================================================================
+   资料补全 —— PATCH /api/v1/suppliers/me (submit_for_review=true)
+================================================================ */
+(function () {
+    if (!requireAuth()) return;
+    const u = SRMAuth.getUser();
+    if (!u || u.role !== "supplier") {
+        alert("请用供应商账号登录");
+        location.replace("login.html");
+        return;
+    }
+
+    const wizard = document.querySelector("[data-wizard]");
+    if (!wizard) return;
+
+    // 用label文本定位输入框,避免给每个input加name
+    function fieldsByLabel() {
+        const map = {};
+        wizard.querySelectorAll(".field").forEach((f) => {
+            const lbl = f.querySelector(".field-label");
+            const inp = f.querySelector(".input, .select, .textarea");
+            if (lbl && inp) {
+                const key = lbl.textContent.replace(/\*/g, "").trim();
+                map[key] = inp;
+            }
+        });
+        return map;
+    }
+
+    // 企业类型中文→英文枚举
+    function mapCompanyType(v) { return v || "有限责任公司"; }
+    // 纳税人类型中文→后端枚举
+    function mapTaxpayer(v) {
+        if (v && v.indexOf("小规模") >= 0) return "small";
+        return "general";
+    }
+
+    // 品类中文→后端英文key,没匹配的直接保留中文
+    const CAT_MAP = {
+        "T700C 高强钢板": "steel_t700c",
+        "热轧/冷轧板卷": "steel_plate",
+        "工字钢 / H 型钢": "steel_h",
+        "方管 / 圆管": "steel_tube",
+        "角钢 / 槽钢": "steel_angle",
+        "高强度螺栓": "bolt",
+        "轴承总成": "bearing",
+        "密封件 / 橡塑件": "seal",
+        "液压软管": "hydraulic_hose",
+        "卡扣 / 锁具": "lock",
+        "变频器 / 驱动模块": "vfd",
+        "接触器 / 继电器": "contactor",
+        "熔断器 / 断路器": "breaker",
+        "连接器 / 端子": "connector",
+        "激光切割": "laser_cut",
+        "数控折弯": "cnc_bend",
+        "焊接组装": "welding",
+        "喷涂 / 电镀": "coating",
+        "机加工": "machining",
+        "设备备件": "spare_parts",
+        "包材 / 辅料": "packaging",
+        "物流运输": "logistics",
+        "办公 / 劳保": "office",
+    };
+
+    function collectCategories() {
+        const out = [];
+        wizard.querySelectorAll('[data-step="4"] input[type=checkbox]:checked').forEach((cb) => {
+            const txt = cb.closest("label")?.querySelector("span")?.textContent?.trim() || "";
+            out.push(CAT_MAP[txt] || txt);
+        });
+        return out;
+    }
+
+    function collectQualifications() {
+        const out = [];
+        const names = ["business_license", "bank_license", "taxpayer_proof", "iso9001", "industry_permit", "case_study"];
+        wizard.querySelectorAll('[data-step="3"] .upload-card input[type=file]').forEach((inp, i) => {
+            const f = inp.files?.[0];
+            if (f) out.push({ type: names[i] || ("doc_" + i), url: "./uploads/" + f.name, pending_upload: true });
+        });
+        return out;
+    }
+
+    function showMessage(kind, text) {
+        let bar = document.getElementById("submit-feedback");
+        if (!bar) {
+            bar = document.createElement("div");
+            bar.id = "submit-feedback";
+            bar.style.cssText = "position:fixed;top:80px;left:50%;transform:translateX(-50%);padding:14px 28px;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.15);z-index:9999;font-size:14px;max-width:520px;text-align:center";
+            document.body.appendChild(bar);
+        }
+        bar.style.background = kind === "ok" ? "#ecfdf5" : "#fef2f2";
+        bar.style.color = kind === "ok" ? "#065f46" : "#991b1b";
+        bar.style.border = "1px solid " + (kind === "ok" ? "#6ee7b7" : "#fecaca");
+        bar.textContent = text;
+        if (kind === "ok") setTimeout(() => bar.remove(), 6000);
+    }
+
+    function showSuccessModal(code) {
+        const mask = document.createElement("div");
+        mask.style.cssText = "position:fixed;inset:0;background:rgba(10,22,40,.55);backdrop-filter:blur(4px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px";
+        mask.innerHTML = `
+            <div style="background:#fff;border-radius:16px;padding:40px;max-width:520px;width:100%;box-shadow:0 40px 80px rgba(0,0,0,.3);text-align:center">
+                <div style="width:64px;height:64px;background:#ecfdf5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <h2 style="font-size:24px;font-weight:600;color:#0a1628;margin-bottom:10px">资料已提交审核</h2>
+                <p style="color:#64748b;font-size:14px;line-height:1.7;margin-bottom:24px">
+                    供应商编号 <b style="color:#0a1628;font-family:ui-monospace,monospace">${code}</b><br>
+                    采购中心将在 1-3 个工作日内完成资质审核。审核通过后，工作台将解锁采购公告与在线报价功能。
+                </p>
+                <a href="dashboard.html" class="btn btn-primary" style="min-width:200px">返回我的工作台</a>
+            </div>
+        `;
+        document.body.appendChild(mask);
+    }
+
+    /* 预填已有资料 */
+    async function prefill() {
+        try {
+            const res = await srmFetch("/api/v1/suppliers/me");
+            const sup = await res.json();
+            if (!res.ok) return;
+            const byLabel = fieldsByLabel();
+            const fill = (k, v) => { if (byLabel[k] && v) byLabel[k].value = v; };
+            fill("公司全称", sup.company_name);
+            fill("统一社会信用代码", sup.unified_credit_code);
+            fill("法定代表人", sup.legal_person);
+            fill("成立日期", (sup.founded_date || "").slice(0, 10));
+            fill("注册地", sup.registered_address);
+            fill("注册资本（万元）", sup.registered_capital);
+            fill("企业类型", sup.company_type);
+            fill("纳税人身份", sup.taxpayer_type === "small_scale" ? "小规模纳税人" : "一般纳税人");
+            fill("主营业务简介", sup.business_intro);
+            fill("联系人姓名", sup.contact_name);
+            fill("手机号", sup.contact_phone);
+            fill("邮箱", sup.contact_email);
+            fill("职位/部门", sup.contact_position);
+            fill("微信（可选）", sup.wechat);
+            fill("座机", sup.landline);
+            // 品类勾选回填
+            const catSet = new Set(sup.categories || []);
+            wizard.querySelectorAll('[data-step="4"] input[type=checkbox]').forEach((cb) => {
+                const txt = cb.closest("label")?.querySelector("span")?.textContent?.trim() || "";
+                if (catSet.has(CAT_MAP[txt] || txt)) cb.checked = true;
+            });
+            // 如已是 approved/pending,提示
+            if (sup.status === "approved") {
+                showMessage("ok", "您的资料已审核通过,此处可查看或修改(提交后需重新审核)");
+            } else if (sup.status === "pending") {
+                showMessage("ok", "资料已提交审核中,无需重复提交。如需修改请联系采购中心");
+            } else if (sup.status === "rejected" && sup.review_note) {
+                showMessage("err", "审核未通过: " + sup.review_note + " - 请修改后重新提交");
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+    prefill();
+
+    wizard.addEventListener("wizard-submit", async (e) => {
+        e.preventDefault();
+        const f = fieldsByLabel();
+        const get = (k) => (f[k] ? (f[k].value || "").trim() : "");
+
+        // 必填校验(手机号/密码/登录账号不再在这个页面填)
+        const required = ["公司全称", "统一社会信用代码", "法定代表人", "成立日期", "注册地", "联系人姓名", "邮箱"];
+        const missing = required.filter((k) => !get(k));
+        if (missing.length) return showMessage("err", "以下必填项未填写：" + missing.join("、"));
+
+        const cats = collectCategories();
+        if (cats.length === 0) return showMessage("err", "请至少勾选 1 个供应品类");
+
+        const payload = {
+            unified_credit_code: get("统一社会信用代码"),
+            legal_person: get("法定代表人"),
+            founded_date: get("成立日期"),
+            registered_address: get("注册地"),
+            registered_capital: get("注册资本（万元）") || null,
+            company_type: mapCompanyType(get("企业类型")),
+            taxpayer_type: mapTaxpayer(get("纳税人身份")),
+            business_intro: get("主营业务简介") || null,
+            contact_name: get("联系人姓名"),
+            contact_email: get("邮箱"),
+            contact_position: get("职位/部门") || null,
+            wechat: get("微信（可选）") || null,
+            landline: get("座机") || null,
+            categories: cats,
+            qualifications: collectQualifications(),
+            submit_for_review: true,
+        };
+
+        const btn = wizard.querySelector("[data-wizard-next]");
+        if (btn) { btn.disabled = true; btn.textContent = "提交中..."; }
+
+        try {
+            const res = await srmFetch("/api/v1/suppliers/me", {
+                method: "PATCH",
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || "提交失败");
+            wizard.querySelectorAll("input,select,textarea,button").forEach((el) => (el.disabled = true));
+            showSuccessModal(data.code);
+        } catch (err) {
+            showMessage("err", "提交失败：" + (err.message || err));
+            if (btn) { btn.disabled = false; btn.textContent = "提交审核"; }
+        }
+    });
+})();
+</script>
+</body>
+</html>
