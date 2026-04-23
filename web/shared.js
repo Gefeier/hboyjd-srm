@@ -64,20 +64,38 @@ function initAuthNav() {
     if (!nav) return;
     const cta = nav.querySelector(".nav-cta");
     const user = SRMAuth.getUser();
-    if (!cta) return;
+
     if (user) {
-        // 已登录:显示用户名+下拉退出
-        const roleLabel = user.role === "buyer" ? "采购" : user.role === "admin" ? "管理" : "供应商";
-        cta.innerHTML = `<span style="display:inline-flex;align-items:center;gap:10px"><span>${user.name || user.username}</span><span style="font-size:11px;opacity:.6">${roleLabel}</span><span data-srm-logout style="margin-left:6px;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);font-size:11px;cursor:pointer">退出</span></span>`;
-        cta.removeAttribute("href");
-        cta.style.cursor = "default";
-        cta.addEventListener("click", (e) => {
-            if (e.target.closest("[data-srm-logout]")) {
-                e.preventDefault();
-                SRMAuth.clear();
-                location.href = location.pathname.startsWith("/admin/") ? "../index.html" : "index.html";
+        // 1. 在 nav-links 注入角色快捷入口(若尚未有)
+        const navLinks = nav.querySelector(".nav-links");
+        const inAdmin = location.pathname.startsWith("/admin/");
+        if (navLinks && !navLinks.querySelector("[data-role-link]")) {
+            const li = document.createElement("li");
+            if (user.role === "supplier") {
+                const href = inAdmin ? "../dashboard.html" : "dashboard.html";
+                li.innerHTML = `<a href="${href}" data-role-link>我的工作台</a>`;
+            } else {
+                // buyer / admin / approver
+                const href = inAdmin ? "index.html" : "admin/index.html";
+                li.innerHTML = `<a href="${href}" data-role-link>采购中心</a>`;
             }
-        });
+            navLinks.appendChild(li);
+        }
+
+        // 2. 右上角 cta 换成 用户名+退出
+        if (cta) {
+            const roleLabel = user.role === "buyer" ? "采购" : user.role === "admin" ? "管理" : user.role === "approver" ? "审批" : "供应商";
+            cta.innerHTML = `<span style="display:inline-flex;align-items:center;gap:10px"><span>${user.name || user.username}</span><span style="font-size:11px;opacity:.6">${roleLabel}</span><span data-srm-logout style="margin-left:6px;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);font-size:11px;cursor:pointer">退出</span></span>`;
+            cta.removeAttribute("href");
+            cta.style.cursor = "default";
+            cta.addEventListener("click", (e) => {
+                if (e.target.closest("[data-srm-logout]")) {
+                    e.preventDefault();
+                    SRMAuth.clear();
+                    location.href = inAdmin ? "../index.html" : "index.html";
+                }
+            });
+        }
     }
     // 未登录保持原状(index.html的"供应商入驻"CTA)
 }
