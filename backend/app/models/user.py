@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime, Enum as SAEnum, String
 from sqlmodel import Field, SQLModel
 
 
@@ -23,7 +23,7 @@ class User(SQLModel, table=True):
     username: str = Field(sa_column=Column(String(32), unique=True, nullable=False, index=True))
     password_hash: str = Field(sa_column=Column(String(256), nullable=False))
     name: str = Field(sa_column=Column(String(64), nullable=False))
-    role: UserRole = Field(nullable=False)
+    role: UserRole = Field(sa_column=Column(SAEnum(UserRole, name="userrole", values_callable=lambda e: [m.value for m in e]), nullable=False))
     phone: str | None = Field(default=None, sa_column=Column(String(20), nullable=True))
     email: str | None = Field(default=None, sa_column=Column(String(128), nullable=True))
     is_active: bool = Field(default=True, nullable=False)
