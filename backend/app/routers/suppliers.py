@@ -8,17 +8,21 @@ from sqlmodel import Session, select
 
 from app.db import get_session
 from app.deps import get_current_user, require_buyer_or_admin
-from app.models.supplier import Supplier, SupplierGrade, SupplierStatus
-from app.models.user import User
+from app.models.supplier import Supplier, SupplierGrade, SupplierSource, SupplierStatus
+from app.models.user import User, UserRole
 from app.schemas.supplier import (
+    ChangePasswordRequest,
     FreezeRequest,
     SupplierListResponse,
+    SupplierProfileUpdate,
     SupplierRead,
     SupplierRegister,
     SupplierRegisterResponse,
     SupplierReviewRequest,
+    SupplierSimpleRegister,
+    SupplierSimpleRegisterResponse,
 )
-from app.security import decode_access_token, get_password_hash
+from app.security import create_access_token, decode_access_token, get_password_hash, verify_password
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
 
@@ -86,10 +90,85 @@ def register_supplier(payload: SupplierRegister, session: Session = Depends(get_
     return SupplierRegisterResponse(id=supplier.id, code=supplier.code, status=supplier.status)
 
 
+@router.post("/simple-register", response_model=SupplierSimpleRegisterResponse, status_code=status.HTTP_201_CREATED)
+def simple_register(payload: SupplierSimpleRegister, session: Session = Depends(get_session)) -> SupplierSimpleRegisterResponse:
+    """最简注册:手机号+密码+公司名 → 创建pending_profile状态账号,签发token免二次登录"""
+    # 防重:手机号或公司名任一已存在都拒绝
+    existing_phone = session.exec(select(Supplier).where(Supplier.contact_phone == payload.contact_phone)).first()
+    if existing_phone:
+        raise HTTPException(status_code=400, detail="此手机号已注册,请直接登录或修改密码")
+    existing_name = session.exec(select(Supplier).where(Supplier.company_name == payload.company_name)).first()
+    if existing_name:
+        raise HTTPException(status_code=400, detail="此企业名称已注册")
+
+    supplier = Supplier(
+        code=generate_supplier_code(session),
+        company_name=payload.company_name,
+        contact_phone=payload.contact_phone,
+        login_username=payload.contact_phone,  # 默认手机号=用户名
+        login_password_hash=get_password_hash(payload.login_password),
+        status=SupplierStatus.PENDING_PROFILE,
+        source=SupplierSource.SELF_REGISTER,
+    )
+    session.add(supplier)
+    session.commit()
+    session.refresh(supplier)
+
+    access_token = create_access_token(supplier.login_username, role=UserRole.SUPPLIER.value, supplier_id=supplier.id)
+    return SupplierSimpleRegisterResponse(
+        id=supplier.id,
+        code=supplier.code,
+        status=supplier.status,
+        login_username=supplier.login_username,
+        access_token=access_token,
+    )
+
+
 @router.get("/me", response_model=SupplierRead)
 def get_my_supplier(sup: Supplier = Depends(current_supplier)) -> SupplierRead:
     """供应商拉自己的档案(含审核状态/等级/品类)"""
     return SupplierRead.model_validate(sup)
+
+
+@router.patch("/me", response_model=SupplierRead)
+def update_my_profile(
+    payload: SupplierProfileUpdate,
+    sup: Supplier = Depends(current_supplier),
+    session: Session = Depends(get_session),
+) -> SupplierRead:
+    """供应商自己补全/修改资料。若submit_for_review=true且资料齐全,状态 pending_profile→pending"""
+    data = payload.model_dump(exclude_unset=True, exclude={"submit_for_review"})
+    for k, v in data.items():
+        setattr(sup, k, v)
+    sup.updated_at = datetime.now(UTC)
+
+    if payload.submit_for_review:
+        if not sup.profile_completed:
+            raise HTTPException(status_code=400, detail="资料未填齐,无法提交审核。请补全公司信息/联系人/品类")
+        # 仅允许从 pending_profile 和 rejected 进入 pending
+        if sup.status in (SupplierStatus.PENDING_PROFILE, SupplierStatus.REJECTED):
+            sup.status = SupplierStatus.PENDING
+            sup.review_note = None  # 清掉旧的驳回意见
+
+    session.add(sup)
+    session.commit()
+    session.refresh(sup)
+    return SupplierRead.model_validate(sup)
+
+
+@router.post("/me/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_my_password(
+    payload: ChangePasswordRequest,
+    sup: Supplier = Depends(current_supplier),
+    session: Session = Depends(get_session),
+) -> None:
+    """供应商修改密码"""
+    if not verify_password(payload.old_password, sup.login_password_hash):
+        raise HTTPException(status_code=400, detail="当前密码不正确")
+    sup.login_password_hash = get_password_hash(payload.new_password)
+    sup.updated_at = datetime.now(UTC)
+    session.add(sup)
+    session.commit()
 
 
 @router.get("", response_model=SupplierListResponse)
