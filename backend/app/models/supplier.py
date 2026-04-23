@@ -1,44 +1,36 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 
-from sqlalchemy import Column, DateTime, Enum as SAEnum, Index, JSON, Numeric, String, Text, desc
+from sqlalchemy import Column, DateTime, Index, JSON, Numeric, String, Text, desc
 from sqlmodel import Field, SQLModel
-
-
-def _pg_enum(enum_cls, name):
-    """创建列枚举,按 .value 持久化(而不是默认的 .name)"""
-    return SAEnum(
-        enum_cls,
-        name=name,
-        values_callable=lambda e: [m.value for m in e],
-    )
 
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-class TaxpayerType(str, Enum):
+# 用 StrEnum (Python 3.11+):str(instance) 直接返回 value,SQLAlchemy 存 VARCHAR 可直接塞
+class TaxpayerType(StrEnum):
     GENERAL = "general"
     SMALL_SCALE = "small_scale"
 
 
-class SupplierStatus(str, Enum):
-    PENDING_PROFILE = "pending_profile"  # 刚注册,尚未完善资料
-    PENDING = "pending"                  # 已提交资料,等审核
-    APPROVED = "approved"                # 审核通过,合格供应商
-    REJECTED = "rejected"                # 审核驳回
-    FROZEN = "frozen"                    # 冻结/暂停
+class SupplierStatus(StrEnum):
+    PENDING_PROFILE = "pending_profile"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    FROZEN = "frozen"
 
 
-class SupplierSource(str, Enum):
-    SELF_REGISTER = "self_register"  # 供应商自己网站注册
-    KINGDEE_IMPORT = "kingdee_import"  # 从金蝶ERP批量导入的老供应商
-    MANUAL = "manual"                 # 采购员手工建档
+class SupplierSource(StrEnum):
+    SELF_REGISTER = "self_register"
+    KINGDEE_IMPORT = "kingdee_import"
+    MANUAL = "manual"
 
 
-class SupplierGrade(str, Enum):
+class SupplierGrade(StrEnum):
     A = "A"
     B = "B"
     C = "C"
@@ -69,7 +61,7 @@ class Supplier(SQLModel, table=True):
     registered_address: str | None = Field(default=None, sa_column=Column(String(256), nullable=True))
     registered_capital: Decimal | None = Field(default=None, sa_column=Column(Numeric(12, 2), nullable=True))
     company_type: str | None = Field(default=None, sa_column=Column(String(32), nullable=True))
-    taxpayer_type: TaxpayerType | None = Field(default=None, sa_column=Column(_pg_enum(TaxpayerType, "taxpayertype"), nullable=True))
+    taxpayer_type: TaxpayerType | None = Field(default=None, sa_column=Column(String(32), nullable=True))
     business_intro: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     # 联系人补充字段
@@ -80,9 +72,9 @@ class Supplier(SQLModel, table=True):
     landline: str | None = Field(default=None, sa_column=Column(String(32), nullable=True))
 
     # === 状态/分级 ===
-    status: SupplierStatus = Field(default=SupplierStatus.PENDING_PROFILE, sa_column=Column(_pg_enum(SupplierStatus, "supplierstatus"), nullable=False))
-    source: SupplierSource = Field(default=SupplierSource.SELF_REGISTER, sa_column=Column(_pg_enum(SupplierSource, "suppliersource"), nullable=False, server_default="self_register"))
-    grade: SupplierGrade | None = Field(default=None, sa_column=Column(_pg_enum(SupplierGrade, "suppliergrade"), nullable=True))
+    status: SupplierStatus = Field(default=SupplierStatus.PENDING_PROFILE, sa_column=Column(String(32), nullable=False, server_default="pending_profile"))
+    source: SupplierSource = Field(default=SupplierSource.SELF_REGISTER, sa_column=Column(String(32), nullable=False, server_default="self_register"))
+    grade: SupplierGrade | None = Field(default=None, sa_column=Column(String(4), nullable=True))
     review_note: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     reviewed_by: int | None = Field(default=None, foreign_key="user.id")
     reviewed_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
