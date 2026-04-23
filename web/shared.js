@@ -87,25 +87,38 @@ function initAuthNav() {
     const roleLabel = user.role === "buyer" ? "采购主管" : user.role === "admin" ? "系统管理员" : user.role === "approver" ? "审批员" : "供应商";
     const avatarChar = (user.name || user.username || "欧").charAt(0);
 
+    // SVG 图标集 - 跟主站其它页面同一stroke风格
+    const ICON = {
+        home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v10a2 2 0 01-2 2h-4v-7h-6v7H5a2 2 0 01-2-2z"/></svg>',
+        dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+        users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
+        bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+        scales: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3v18M5 7l-2 6a4 4 0 008 0l-2-6M19 7l-2 6a4 4 0 008 0l-2-6M5 7l7-2 7 2"/></svg>',
+        doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+        globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>',
+        external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
+        logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+    };
+
     // 菜单项按角色不同
     const menuItems = user.role === "supplier" ? [
-        { icon: "🏠", label: "我的工作台", href: P + "dashboard.html" },
-        { icon: "📋", label: "采购公告", href: P + "bids.html" },
-        { icon: "🌐", label: "平台门户", href: P + "index.html" },
+        { icon: ICON.home, label: "我的工作台", href: P + "dashboard.html" },
+        { icon: ICON.doc, label: "采购公告", href: P + "bids.html" },
+        { icon: ICON.globe, label: "平台门户", href: P + "index.html" },
         { divider: true },
-        { icon: "↪", label: "返回官网", href: "https://hboyjd.com", external: true },
-        { icon: "⎋", label: "退出登录", logout: true, danger: true },
+        { icon: ICON.external, label: "返回官网", href: "https://hboyjd.com", external: true },
+        { icon: ICON.logout, label: "退出登录", logout: true, danger: true },
     ] : [
-        { icon: "📊", label: "采购中心首页", href: P + "admin/index.html" },
-        { icon: "👥", label: "合格供应商库", href: P + "admin/suppliers.html" },
-        { icon: "⚡", label: "待审核入驻", href: P + "admin/suppliers.html?status=pending" },
-        { icon: "⚖", label: "比价与定点", href: P + "admin/compare.html" },
+        { icon: ICON.dashboard, label: "采购中心首页", href: P + "admin/index.html" },
+        { icon: ICON.users, label: "合格供应商库", href: P + "admin/suppliers.html" },
+        { icon: ICON.bolt, label: "待审核入驻", href: P + "admin/suppliers.html?status=pending" },
+        { icon: ICON.scales, label: "比价与定点", href: P + "admin/compare.html" },
         { divider: true },
-        { icon: "📋", label: "采购公告", href: P + "bids.html" },
-        { icon: "🌐", label: "平台门户", href: P + "index.html" },
+        { icon: ICON.doc, label: "采购公告", href: P + "bids.html" },
+        { icon: ICON.globe, label: "平台门户", href: P + "index.html" },
         { divider: true },
-        { icon: "↪", label: "返回官网", href: "https://hboyjd.com", external: true },
-        { icon: "⎋", label: "退出登录", logout: true, danger: true },
+        { icon: ICON.external, label: "返回官网", href: "https://hboyjd.com", external: true },
+        { icon: ICON.logout, label: "退出登录", logout: true, danger: true },
     ];
 
     const renderMenu = () => menuItems.map(it => {
@@ -230,12 +243,16 @@ function initAuthNav() {
             .srm-menu-item.danger { color: #dc2626; }
             .srm-menu-item.danger:hover { background: #fef2f2; color: #991b1b; }
             .srm-menu-ic {
-                width: 22px;
+                width: 18px; height: 18px;
                 display: inline-flex; align-items: center; justify-content: center;
-                font-size: 14px;
                 flex-shrink: 0;
-                opacity: 0.85;
+                opacity: 0.75;
+                color: #64748b;
             }
+            .srm-menu-ic svg { width: 16px; height: 16px; }
+            .srm-menu-item:hover .srm-menu-ic { opacity: 1; color: #2563eb; }
+            .srm-menu-item.danger .srm-menu-ic { color: #dc2626; opacity: 0.8; }
+            .srm-menu-item.danger:hover .srm-menu-ic { color: #991b1b; opacity: 1; }
             .srm-menu-divider {
                 height: 1px;
                 background: #f1f5f9;
