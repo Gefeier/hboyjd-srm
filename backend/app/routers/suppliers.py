@@ -114,7 +114,7 @@ def simple_register(payload: SupplierSimpleRegister, session: Session = Depends(
     session.commit()
     session.refresh(supplier)
 
-    access_token = create_access_token(supplier.login_username, role=UserRole.SUPPLIER.value, supplier_id=supplier.id)
+    access_token = create_access_token(supplier.login_username, role=str(UserRole.SUPPLIER), supplier_id=supplier.id)
     return SupplierSimpleRegisterResponse(
         id=supplier.id,
         code=supplier.code,

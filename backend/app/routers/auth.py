@@ -31,13 +31,13 @@ def login(payload: LoginRequest, session: Session = Depends(get_session)) -> Log
     # 1. 先查内部User(采购员/管理员/审批)
     user = session.exec(select(User).where(User.username == payload.username, User.is_active.is_(True))).first()
     if user and verify_password(payload.password, user.password_hash):
-        access_token = create_access_token(user.username, role=user.role.value)
+        access_token = create_access_token(user.username, role=str(user.role))
         return LoginResponse(access_token=access_token, user=UserRead.model_validate(user))
 
     # 2. 再查Supplier表(按login_username匹配)
     sup = session.exec(select(Supplier).where(Supplier.login_username == payload.username)).first()
     if sup and verify_password(payload.password, sup.login_password_hash):
-        access_token = create_access_token(sup.login_username, role=UserRole.SUPPLIER.value, supplier_id=sup.id)
+        access_token = create_access_token(sup.login_username, role=str(UserRole.SUPPLIER), supplier_id=sup.id)
         return LoginResponse(access_token=access_token, user=_supplier_as_user(sup))
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
