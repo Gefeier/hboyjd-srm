@@ -11,6 +11,8 @@ from app.deps import get_current_user, require_buyer_or_admin
 from app.models.supplier import Supplier, SupplierGrade, SupplierSource, SupplierStatus
 from app.models.user import User, UserRole
 from app.schemas.supplier import (
+    AdminCreateSupplier,
+    AdminCreateSupplierResponse,
     ChangePasswordRequest,
     FreezeRequest,
     SupplierListResponse,
@@ -88,6 +90,55 @@ def register_supplier(payload: SupplierRegister, session: Session = Depends(get_
     session.commit()
     session.refresh(supplier)
     return SupplierRegisterResponse(id=supplier.id, code=supplier.code, status=supplier.status)
+
+
+@router.post("/admin-create", response_model=AdminCreateSupplierResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_supplier(
+    payload: AdminCreateSupplier,
+    session: Session = Depends(get_session),
+    _: User = Depends(require_buyer_or_admin),
+) -> AdminCreateSupplierResponse:
+    """采购员手工给供应商建账号(source=manual)。可指定密码或由后端生成。
+    明文密码一次性返回给采购员,便于线下转告供应商。"""
+    import secrets, string
+
+    existing_phone = session.exec(select(Supplier).where(Supplier.contact_phone == payload.contact_phone)).first()
+    if existing_phone:
+        raise HTTPException(status_code=400, detail="此手机号已被占用")
+    existing_name = session.exec(select(Supplier).where(Supplier.company_name == payload.company_name)).first()
+    if existing_name:
+        raise HTTPException(status_code=400, detail="此企业名称已存在")
+
+    # 生成密码(若未指定)
+    if payload.login_password:
+        plain_password = payload.login_password
+    else:
+        # 8 位:2 字母 + 6 数字,好记好念
+        alpha = ''.join(secrets.choice(string.ascii_lowercase) for _ in range(2))
+        digits = ''.join(secrets.choice(string.digits) for _ in range(6))
+        plain_password = alpha + digits
+
+    supplier = Supplier(
+        code=generate_supplier_code(session),
+        company_name=payload.company_name,
+        contact_phone=payload.contact_phone,
+        login_username=payload.contact_phone,
+        login_password_hash=get_password_hash(plain_password),
+        status=SupplierStatus.PENDING_PROFILE,
+        source=SupplierSource.MANUAL,
+    )
+    session.add(supplier)
+    session.commit()
+    session.refresh(supplier)
+
+    return AdminCreateSupplierResponse(
+        id=supplier.id,
+        code=supplier.code,
+        company_name=supplier.company_name,
+        login_username=supplier.login_username,
+        login_password=plain_password,
+        status=supplier.status,
+    )
 
 
 @router.post("/simple-register", response_model=SupplierSimpleRegisterResponse, status_code=status.HTTP_201_CREATED)

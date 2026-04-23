@@ -83,6 +83,36 @@ class SupplierSimpleRegisterResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class AdminCreateSupplier(BaseModel):
+    """采购员手工开账号(为老/离线供应商)"""
+    company_name: str = Field(min_length=2, max_length=128)
+    contact_phone: str
+    login_password: str | None = None  # 不传则后端生成
+
+    @field_validator("contact_phone")
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        value = value.strip()
+        if not PHONE_PATTERN.match(value):
+            raise ValueError("请填写 11 位大陆手机号")
+        return value
+
+    @field_validator("company_name")
+    @classmethod
+    def normalize_company_name(cls, value: str) -> str:
+        return value.strip()
+
+
+class AdminCreateSupplierResponse(BaseModel):
+    """返回包含明文密码,便于采购员一次性告知供应商"""
+    id: int
+    code: str
+    company_name: str
+    login_username: str
+    login_password: str  # 明文仅在创建时返回
+    status: SupplierStatus
+
+
 # 保留旧的完整注册 schema 以免 break(采购员手工建档还会用)
 class SupplierRegister(BaseModel):
     company_name: str
