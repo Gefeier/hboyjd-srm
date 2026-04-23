@@ -64,40 +64,222 @@ function initAuthNav() {
     if (!nav) return;
     const cta = nav.querySelector(".nav-cta");
     const user = SRMAuth.getUser();
+    if (!user) return; // 未登录保持原样
 
-    if (user) {
-        // 1. 在 nav-links 注入角色快捷入口(若尚未有)
-        const navLinks = nav.querySelector(".nav-links");
-        const inAdmin = location.pathname.startsWith("/admin/");
-        if (navLinks && !navLinks.querySelector("[data-role-link]")) {
-            const li = document.createElement("li");
-            if (user.role === "supplier") {
-                const href = inAdmin ? "../dashboard.html" : "dashboard.html";
-                li.innerHTML = `<a href="${href}" data-role-link>我的工作台</a>`;
-            } else {
-                // buyer / admin / approver
-                const href = inAdmin ? "index.html" : "admin/index.html";
-                li.innerHTML = `<a href="${href}" data-role-link>采购中心</a>`;
-            }
-            navLinks.appendChild(li);
-        }
+    const inAdmin = location.pathname.startsWith("/admin/");
+    const P = inAdmin ? "../" : "";  // 路径前缀
 
-        // 2. 右上角 cta 换成 用户名+退出
-        if (cta) {
-            const roleLabel = user.role === "buyer" ? "采购" : user.role === "admin" ? "管理" : user.role === "approver" ? "审批" : "供应商";
-            cta.innerHTML = `<span style="display:inline-flex;align-items:center;gap:10px"><span>${user.name || user.username}</span><span style="font-size:11px;opacity:.6">${roleLabel}</span><span data-srm-logout style="margin-left:6px;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);font-size:11px;cursor:pointer">退出</span></span>`;
-            cta.removeAttribute("href");
-            cta.style.cursor = "default";
-            cta.addEventListener("click", (e) => {
-                if (e.target.closest("[data-srm-logout]")) {
-                    e.preventDefault();
-                    SRMAuth.clear();
-                    location.href = inAdmin ? "../index.html" : "index.html";
-                }
-            });
+    // 1. 在 nav-links 注入角色快捷入口(若尚未有)
+    const navLinks = nav.querySelector(".nav-links");
+    if (navLinks && !navLinks.querySelector("[data-role-link]")) {
+        const li = document.createElement("li");
+        if (user.role === "supplier") {
+            li.innerHTML = `<a href="${P}dashboard.html" data-role-link>我的工作台</a>`;
+        } else {
+            li.innerHTML = `<a href="${P}admin/index.html" data-role-link>采购中心</a>`;
         }
+        navLinks.appendChild(li);
     }
-    // 未登录保持原状(index.html的"供应商入驻"CTA)
+
+    // 2. 右上角 CTA 换成 用户头像+下拉菜单
+    if (!cta) return;
+
+    const roleLabel = user.role === "buyer" ? "采购主管" : user.role === "admin" ? "系统管理员" : user.role === "approver" ? "审批员" : "供应商";
+    const avatarChar = (user.name || user.username || "欧").charAt(0);
+
+    // 菜单项按角色不同
+    const menuItems = user.role === "supplier" ? [
+        { icon: "🏠", label: "我的工作台", href: P + "dashboard.html" },
+        { icon: "📋", label: "采购公告", href: P + "bids.html" },
+        { icon: "🌐", label: "平台门户", href: P + "index.html" },
+        { divider: true },
+        { icon: "↪", label: "返回官网", href: "https://hboyjd.com", external: true },
+        { icon: "⎋", label: "退出登录", logout: true, danger: true },
+    ] : [
+        { icon: "📊", label: "采购中心首页", href: P + "admin/index.html" },
+        { icon: "👥", label: "合格供应商库", href: P + "admin/suppliers.html" },
+        { icon: "⚡", label: "待审核入驻", href: P + "admin/suppliers.html?status=pending" },
+        { icon: "⚖", label: "比价与定点", href: P + "admin/compare.html" },
+        { divider: true },
+        { icon: "📋", label: "采购公告", href: P + "bids.html" },
+        { icon: "🌐", label: "平台门户", href: P + "index.html" },
+        { divider: true },
+        { icon: "↪", label: "返回官网", href: "https://hboyjd.com", external: true },
+        { icon: "⎋", label: "退出登录", logout: true, danger: true },
+    ];
+
+    const renderMenu = () => menuItems.map(it => {
+        if (it.divider) return `<div class="srm-menu-divider"></div>`;
+        if (it.logout) return `<button type="button" class="srm-menu-item danger" data-srm-logout><span class="srm-menu-ic">${it.icon}</span><span>${it.label}</span></button>`;
+        const target = it.external ? ' target="_blank" rel="noopener"' : '';
+        return `<a class="srm-menu-item" href="${it.href}"${target}><span class="srm-menu-ic">${it.icon}</span><span>${it.label}</span></a>`;
+    }).join("");
+
+    cta.removeAttribute("href");
+    cta.style.cssText = "padding:0;background:transparent;border:none;cursor:default";
+    cta.innerHTML = `
+      <button type="button" class="srm-user-trigger" data-srm-trigger>
+          <span class="srm-user-avatar">${avatarChar}</span>
+          <span class="srm-user-txt"><span class="srm-user-name">${user.name || user.username}</span><span class="srm-user-role">${roleLabel}</span></span>
+          <svg class="srm-user-caret" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 3.5l3 3 3-3"/></svg>
+      </button>
+      <div class="srm-user-menu" data-srm-menu hidden>
+          <div class="srm-menu-head">
+              <div class="srm-menu-avatar-lg">${avatarChar}</div>
+              <div class="srm-menu-head-info">
+                  <div class="srm-menu-head-name">${user.name || user.username}</div>
+                  <div class="srm-menu-head-role">${roleLabel}${user.phone ? " · " + user.phone : ""}</div>
+              </div>
+          </div>
+          <div class="srm-menu-body">${renderMenu()}</div>
+      </div>
+    `;
+
+    // 注入样式(只注一次)
+    if (!document.getElementById("srm-user-menu-style")) {
+        const st = document.createElement("style");
+        st.id = "srm-user-menu-style";
+        st.textContent = `
+            .nav-cta { position: relative; }
+            .srm-user-trigger {
+                display: inline-flex; align-items: center; gap: 10px;
+                padding: 6px 12px 6px 6px;
+                background: rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.15);
+                border-radius: 999px;
+                color: #fff;
+                font-family: inherit;
+                font-size: 13px;
+                cursor: pointer;
+                transition: all 0.18s;
+            }
+            .srm-user-trigger:hover {
+                background: rgba(255,255,255,0.15);
+                border-color: rgba(255,255,255,0.3);
+            }
+            .srm-user-trigger.is-open {
+                background: rgba(37, 99, 235, 0.85);
+                border-color: rgba(96, 165, 250, 0.6);
+            }
+            .srm-user-avatar {
+                width: 28px; height: 28px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #2563eb, #0f2035);
+                color: #fff;
+                display: inline-flex; align-items: center; justify-content: center;
+                font-weight: 600; font-size: 13px;
+                flex-shrink: 0;
+            }
+            .srm-user-txt { display: inline-flex; flex-direction: column; line-height: 1.2; text-align: left; }
+            .srm-user-name { font-size: 13px; font-weight: 500; }
+            .srm-user-role { font-size: 10px; color: rgba(255,255,255,0.6); letter-spacing: 0.5px; }
+            .srm-user-caret { opacity: 0.7; transition: transform 0.2s; }
+            .srm-user-trigger.is-open .srm-user-caret { transform: rotate(180deg); opacity: 1; }
+
+            .srm-user-menu {
+                position: absolute;
+                top: calc(100% + 8px);
+                right: 0;
+                min-width: 260px;
+                background: #fff;
+                border-radius: 12px;
+                box-shadow: 0 20px 60px rgba(10, 22, 40, 0.25);
+                border: 1px solid #e2e8f0;
+                overflow: hidden;
+                z-index: 2000;
+                animation: srmMenuIn 0.18s ease;
+            }
+            .srm-user-menu[hidden] { display: none; }
+            @keyframes srmMenuIn {
+                from { opacity: 0; transform: translateY(-6px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .srm-menu-head {
+                padding: 18px 18px 16px;
+                background: linear-gradient(135deg, #eff6ff, #ffffff);
+                border-bottom: 1px solid #f1f5f9;
+                display: flex; gap: 12px; align-items: center;
+            }
+            .srm-menu-avatar-lg {
+                width: 44px; height: 44px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #2563eb, #1e293b);
+                color: #fff;
+                display: inline-flex; align-items: center; justify-content: center;
+                font-weight: 600; font-size: 18px;
+                flex-shrink: 0;
+            }
+            .srm-menu-head-name { font-size: 15px; font-weight: 600; color: #0a1628; margin-bottom: 3px; }
+            .srm-menu-head-role { font-size: 12px; color: #64748b; }
+            .srm-menu-body { padding: 6px 0; }
+            .srm-menu-item {
+                display: flex; align-items: center; gap: 10px;
+                padding: 10px 18px;
+                width: 100%;
+                background: transparent;
+                border: none;
+                text-align: left;
+                color: #334155;
+                font-size: 13.5px;
+                font-family: inherit;
+                cursor: pointer;
+                text-decoration: none;
+                transition: all 0.12s;
+            }
+            .srm-menu-item:hover { background: #f1f5f9; color: #0a1628; }
+            .srm-menu-item.danger { color: #dc2626; }
+            .srm-menu-item.danger:hover { background: #fef2f2; color: #991b1b; }
+            .srm-menu-ic {
+                width: 22px;
+                display: inline-flex; align-items: center; justify-content: center;
+                font-size: 14px;
+                flex-shrink: 0;
+                opacity: 0.85;
+            }
+            .srm-menu-divider {
+                height: 1px;
+                background: #f1f5f9;
+                margin: 6px 0;
+            }
+            @media (max-width: 640px) {
+                .srm-user-txt { display: none; }
+                .srm-user-trigger { padding: 4px; }
+                .srm-user-menu { right: -40px; }
+            }
+        `;
+        document.head.appendChild(st);
+    }
+
+    const trigger = cta.querySelector("[data-srm-trigger]");
+    const menu = cta.querySelector("[data-srm-menu]");
+
+    const close = () => {
+        menu.hidden = true;
+        trigger.classList.remove("is-open");
+    };
+    const toggle = () => {
+        const open = menu.hidden;
+        menu.hidden = !open;
+        trigger.classList.toggle("is-open", open);
+    };
+
+    trigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggle();
+    });
+    menu.addEventListener("click", (e) => {
+        if (e.target.closest("[data-srm-logout]")) {
+            e.preventDefault();
+            SRMAuth.clear();
+            location.href = (inAdmin ? "../" : "") + "index.html";
+        }
+    });
+    document.addEventListener("click", (e) => {
+        if (!cta.contains(e.target)) close();
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") close();
+    });
 }
 
 // Navbar滚动效果
