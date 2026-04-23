@@ -427,22 +427,26 @@ body { background: var(--gray-50); }
         </div>
 
         <div class="aside-group">
+            <h6>工作台</h6>
+            <nav class="aside-nav">
+                <a href="index.html"><span>📊 概览首页</span></a>
+            </nav>
+        </div>
+
+        <div class="aside-group">
             <h6>供应商管理</h6>
             <nav class="aside-nav">
                 <a href="suppliers.html" class="active">
                     <span>合格供应商库</span>
-                    <span class="count">86</span>
                 </a>
-                <a href="#">
+                <a href="suppliers.html?status=pending">
                     <span>入驻审核</span>
-                    <span class="count">7</span>
                 </a>
                 <a href="#">
                     <span>分级与评价</span>
                 </a>
                 <a href="#">
                     <span>黑名单</span>
-                    <span class="count">2</span>
                 </a>
             </nav>
         </div>
@@ -802,11 +806,12 @@ body { background: var(--gray-50); }
         steel: "钢材", fasteners: "紧固件",
     };
 
-    // 筛选态
+    // 筛选态 (支持URL ?status=pending&grade=A&keyword=xxx)
+    const urlParams = new URLSearchParams(location.search);
     const state = {
-        status: null,   // null=all, or pending/approved/...
-        grade: null,
-        keyword: "",
+        status: urlParams.get("status") || null,
+        grade: urlParams.get("grade") || null,
+        keyword: urlParams.get("keyword") || "",
         page: 1,
         page_size: 10,
     };
@@ -832,6 +837,16 @@ body { background: var(--gray-50); }
             refresh();
         });
     });
+    // 按URL初始状态激活tab
+    (function syncFilterFromURL() {
+        const urlStatus = state.status, urlGrade = state.grade;
+        let matchKey = "all";
+        if (urlStatus === "pending") matchKey = "review";
+        else if (urlGrade === "A") matchKey = "A";
+        else if (urlGrade === "B") matchKey = "B";
+        else if (urlGrade === "C") matchKey = "C";
+        filterBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.filter === matchKey));
+    })();
 
     // 搜索框
     const searchInput = document.querySelector(".toolbar input.search");

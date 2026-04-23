@@ -206,7 +206,7 @@
             if (!res.ok) throw new Error(data.detail || "登录失败");
             SRMAuth.setToken(data.access_token);
             SRMAuth.setUser(data.user);
-            const next = new URLSearchParams(location.search).get("next") || (data.user.role === "supplier" ? "dashboard.html" : "admin/suppliers.html");
+            const next = new URLSearchParams(location.search).get("next") || (data.user.role === "supplier" ? "dashboard.html" : "admin/index.html");
             location.replace(next);
         } catch (err) {
             errBox.textContent = err.message || "登录失败，请检查账号密码";
