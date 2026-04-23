@@ -442,6 +442,21 @@ body { background: var(--gray-50); }
                 <input class="input" type="text" placeholder="用于登录供应商工作台，6-20 位字母/数字">
                 <div class="field-hint">默认以联系人手机号作为登录账号。</div>
             </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">设置登录密码 <span class="req">*</span></label>
+                    <input class="input" type="password" placeholder="至少 8 位，建议字母+数字组合" autocomplete="new-password">
+                </div>
+                <div class="field">
+                    <label class="field-label">确认密码 <span class="req">*</span></label>
+                    <input class="input" type="password" placeholder="再输一次" autocomplete="new-password">
+                </div>
+            </div>
+            <div class="info-stripe" style="background:var(--warn-50);border-color:#fef3c7;color:#92400e">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <span>请妥善保存账号和密码——系统不会以短信方式告知密码。审核通过后使用此账密登录供应商工作台。</span>
+            </div>
         </div>
 
         <!-- Step 3: 资质上传 -->
@@ -718,19 +733,65 @@ body { background: var(--gray-50); }
         if (kind === "ok") setTimeout(() => bar.remove(), 6000);
     }
 
+    function showSuccessModal(code, username) {
+        const mask = document.createElement("div");
+        mask.style.cssText = "position:fixed;inset:0;background:rgba(10,22,40,.55);backdrop-filter:blur(4px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px";
+        mask.innerHTML = `
+            <div style="background:#fff;border-radius:16px;padding:40px;max-width:540px;width:100%;box-shadow:0 40px 80px rgba(0,0,0,.3);text-align:center">
+                <div style="width:64px;height:64px;background:#ecfdf5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <h2 style="font-size:24px;font-weight:600;color:#0a1628;margin-bottom:10px">入驻资料已提交</h2>
+                <p style="color:#64748b;font-size:14px;line-height:1.7;margin-bottom:28px">采购中心将在 1-3 个工作日内完成资质审核，审核结果通过短信/邮件通知。</p>
+
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:20px;text-align:left">
+                    <div style="font-size:12px;color:#94a3b8;letter-spacing:1px;margin-bottom:12px">您的登录凭证 · 请妥善保存</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #e2e8f0">
+                        <span style="font-size:13px;color:#64748b">供应商编号</span>
+                        <span style="font-family:ui-monospace,monospace;font-weight:600;color:#0a1628" id="reg-ok-code">${code}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #e2e8f0">
+                        <span style="font-size:13px;color:#64748b">登录账号</span>
+                        <span style="font-family:ui-monospace,monospace;font-weight:600;color:#0a1628" id="reg-ok-user">${username}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+                        <span style="font-size:13px;color:#64748b">登录密码</span>
+                        <span style="color:#64748b;font-size:13px">您刚刚设置的密码</span>
+                    </div>
+                </div>
+
+                <div style="background:#eff6ff;border:1px solid #dbeafe;color:#1d4ed8;border-radius:8px;padding:12px 14px;font-size:12px;margin-bottom:24px;text-align:left;line-height:1.7">
+                    <strong>提示：</strong>审核通过前您可以先登录查看申请状态，审核通过后将解锁采购公告参与及在线报价等功能。
+                </div>
+
+                <div style="display:flex;gap:10px;justify-content:center">
+                    <a href="login.html" class="btn btn-primary" style="flex:1;max-width:200px">去登录</a>
+                    <a href="index.html" class="btn btn-ghost" style="flex:1;max-width:200px">返回首页</a>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(mask);
+    }
+
     wizard.addEventListener("wizard-submit", async (e) => {
         e.preventDefault(); // 抑制默认alert
         const f = fieldsByLabel();
         const get = (k) => (f[k] ? (f[k].value || "").trim() : "");
 
         // 客户端基础校验
-        const required = ["公司全称", "统一社会信用代码", "法定代表人", "成立日期", "注册地", "联系人姓名", "手机号", "邮箱", "登录账号"];
+        const required = ["公司全称", "统一社会信用代码", "法定代表人", "成立日期", "注册地", "联系人姓名", "手机号", "邮箱", "登录账号", "设置登录密码", "确认密码"];
         const missing = required.filter((k) => !get(k));
         if (missing.length) return showMessage("err", "以下必填项未填写：" + missing.join("、"));
+
+        const pwd = get("设置登录密码");
+        const pwd2 = get("确认密码");
+        if (pwd.length < 8) return showMessage("err", "密码至少 8 位");
+        if (pwd !== pwd2) return showMessage("err", "两次密码不一致,请重新确认");
 
         const cats = collectCategories();
         if (cats.length === 0) return showMessage("err", "请至少勾选 1 个供应品类");
 
+        const username = get("登录账号");
         const payload = {
             company_name: get("公司全称"),
             unified_credit_code: get("统一社会信用代码"),
@@ -747,8 +808,8 @@ body { background: var(--gray-50); }
             contact_position: get("职位/部门") || null,
             wechat: get("微信（可选）") || null,
             landline: get("座机") || null,
-            login_username: get("登录账号"),
-            login_password: "changeme" + Date.now().toString().slice(-6), // 临时,后续应让用户设密码
+            login_username: username,
+            login_password: pwd,
             categories: cats,
             qualifications: collectQualifications(),
         };
@@ -765,9 +826,9 @@ body { background: var(--gray-50); }
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || "提交失败");
 
-            showMessage("ok", "提交成功！供应商编号：" + data.code + " · 状态：待审核。3个工作日内采购中心将审核并通过短信/邮件通知。");
             // 禁用所有输入
             wizard.querySelectorAll("input,select,textarea,button").forEach((el) => (el.disabled = true));
+            showSuccessModal(data.code, username);
         } catch (err) {
             showMessage("err", "提交失败：" + (err.message || err));
             if (btn) { btn.disabled = false; btn.textContent = "提交审核"; }

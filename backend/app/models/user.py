@@ -13,6 +13,7 @@ class UserRole(str, Enum):
     ADMIN = "admin"
     BUYER = "buyer"
     APPROVER = "approver"
+    SUPPLIER = "supplier"  # 虚拟角色:实际身份在Supplier表,login返回时合成用
 
 
 class User(SQLModel, table=True):

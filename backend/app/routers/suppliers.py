@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError
 from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
@@ -16,9 +18,33 @@ from app.schemas.supplier import (
     SupplierRegisterResponse,
     SupplierReviewRequest,
 )
-from app.security import get_password_hash
+from app.security import decode_access_token, get_password_hash
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
+
+_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+
+def current_supplier(session: Session = Depends(get_session), token: str = Depends(_oauth2)) -> Supplier:
+    """从JWT token解出supplier身份;专供供应商登录后自查/报价等接口"""
+    cred_err = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="登录已失效,请重新登录")
+    try:
+        payload = decode_access_token(token)
+    except JWTError:
+        raise cred_err
+    if payload.get("role") != "supplier":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要供应商登录")
+    sup = None
+    sup_id = payload.get("supplier_id")
+    if sup_id:
+        sup = session.get(Supplier, sup_id)
+    if not sup:
+        username = payload.get("sub")
+        if username:
+            sup = session.exec(select(Supplier).where(Supplier.login_username == username)).first()
+    if not sup:
+        raise cred_err
+    return sup
 
 
 def generate_supplier_code(session: Session) -> str:
@@ -58,6 +84,12 @@ def register_supplier(payload: SupplierRegister, session: Session = Depends(get_
     session.commit()
     session.refresh(supplier)
     return SupplierRegisterResponse(id=supplier.id, code=supplier.code, status=supplier.status)
+
+
+@router.get("/me", response_model=SupplierRead)
+def get_my_supplier(sup: Supplier = Depends(current_supplier)) -> SupplierRead:
+    """供应商拉自己的档案(含审核状态/等级/品类)"""
+    return SupplierRead.model_validate(sup)
 
 
 @router.get("", response_model=SupplierListResponse)

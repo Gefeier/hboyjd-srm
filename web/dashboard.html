@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>供应商工作台 · 欧阳聚德供应商协同平台</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+body { background: var(--gray-50); }
+
+.dash-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+}
+
+.dash-head {
+    padding: 120px 0 40px;
+}
+.dash-head .eyebrow {
+    display: inline-block;
+    padding: 5px 14px;
+    background: var(--blue-50);
+    color: var(--blue-700);
+    font-size: 12px;
+    border-radius: var(--radius-pill);
+    margin-bottom: 14px;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+.dash-head h1 {
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--navy-900);
+    margin-bottom: 8px;
+}
+.dash-head .sub {
+    color: var(--gray-600);
+    font-size: 15px;
+}
+
+/* 审核状态大卡 */
+.status-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 32px 36px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-100);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 32px;
+    margin-bottom: 24px;
+}
+.status-icon {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.status-icon.pending { background: var(--warn-50); color: var(--warn-500); }
+.status-icon.approved { background: var(--ok-50); color: var(--ok-500); }
+.status-icon.rejected { background: var(--danger-50); color: var(--danger-500); }
+.status-icon.frozen { background: var(--gray-100); color: var(--gray-500); }
+.status-icon svg { width: 36px; height: 36px; }
+.status-info h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--navy-900);
+    margin-bottom: 8px;
+}
+.status-info p {
+    color: var(--gray-600);
+    font-size: 14px;
+    line-height: 1.7;
+}
+.status-meta {
+    text-align: right;
+    min-width: 160px;
+}
+.status-meta .code {
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    color: var(--navy-900);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.status-meta .grade {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 6px;
+}
+.status-meta .grade.A { background: #dbeafe; color: var(--blue-700); }
+.status-meta .grade.B { background: var(--blue-50); color: var(--blue-600); }
+.status-meta .grade.C { background: var(--gray-100); color: var(--gray-600); }
+.status-meta .grade.D { background: var(--gray-100); color: var(--gray-600); }
+
+/* 档案卡 + 工作面板布局 */
+.dash-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 24px;
+}
+@media (max-width: 960px) { .dash-grid { grid-template-columns: 1fr; } }
+
+.panel {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-100);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.panel-head {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.panel-head h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--navy-900);
+}
+.panel-head .action {
+    font-size: 13px;
+    color: var(--blue-600);
+    font-weight: 500;
+}
+.panel-body { padding: 24px 28px; }
+
+/* 档案字段表 */
+.info-table { width: 100%; }
+.info-table tr { border-bottom: 1px solid var(--gray-100); }
+.info-table tr:last-child { border-bottom: none; }
+.info-table td {
+    padding: 12px 0;
+    font-size: 14px;
+    vertical-align: top;
+    line-height: 1.6;
+}
+.info-table td.lbl { color: var(--gray-500); width: 140px; }
+.info-table td.val { color: var(--navy-900); font-weight: 500; }
+
+/* 品类 pill */
+.cat-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat-pill {
+    padding: 4px 10px;
+    background: var(--blue-50);
+    color: var(--blue-700);
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* 占位 · 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--gray-500);
+}
+.empty-state .icon {
+    width: 56px; height: 56px;
+    background: var(--gray-100);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    color: var(--gray-400);
+}
+.empty-state .icon svg { width: 26px; height: 26px; }
+.empty-state h4 { font-size: 15px; color: var(--navy-900); margin-bottom: 6px; font-weight: 500; }
+.empty-state p { font-size: 13px; line-height: 1.7; }
+
+/* 审核意见/备注 */
+.review-note {
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: var(--gray-50);
+    border-left: 3px solid var(--blue-500);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--gray-700);
+    line-height: 1.7;
+}
+.review-note strong { color: var(--navy-900); display: block; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo-white.png" alt="欧阳聚德">
+            <span class="nav-suffix">供应商工作台</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">门户首页</a></li>
+            <li><a href="bids.html">采购公告</a></li>
+            <li><a href="dashboard.html" class="active">我的工作台</a></li>
+            <li><a href="#">帮助中心</a></li>
+        </ul>
+        <a href="#" class="nav-cta">
+            <span>登录中</span>
+        </a>
+    </div>
+</nav>
+
+<div class="dash-wrap">
+    <div class="dash-head">
+        <span class="eyebrow">SUPPLIER DASHBOARD</span>
+        <h1 id="dashTitle">我的工作台</h1>
+        <p class="sub" id="dashSub">加载中...</p>
+    </div>
+
+    <!-- 审核状态大卡 -->
+    <div class="status-card" id="statusCard">
+        <div class="status-icon pending" id="statusIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="status-info">
+            <h2 id="statusTitle">加载中...</h2>
+            <p id="statusDesc">正在从服务器获取您的档案...</p>
+        </div>
+        <div class="status-meta">
+            <div class="code" id="statusCode">—</div>
+            <div id="statusGradeWrap"></div>
+        </div>
+    </div>
+
+    <div class="dash-grid">
+        <!-- 左:档案信息 -->
+        <div class="panel">
+            <div class="panel-head">
+                <h3>企业档案</h3>
+                <span class="action" style="color:var(--gray-400);font-weight:400;font-size:12px">审核通过后可修改</span>
+            </div>
+            <div class="panel-body">
+                <table class="info-table">
+                    <tr><td class="lbl">公司全称</td><td class="val" id="fCompanyName">—</td></tr>
+                    <tr><td class="lbl">统一社会信用代码</td><td class="val" id="fCreditCode">—</td></tr>
+                    <tr><td class="lbl">法定代表人</td><td class="val" id="fLegalPerson">—</td></tr>
+                    <tr><td class="lbl">成立日期</td><td class="val" id="fFoundedDate">—</td></tr>
+                    <tr><td class="lbl">注册地址</td><td class="val" id="fAddress">—</td></tr>
+                    <tr><td class="lbl">企业类型</td><td class="val" id="fCompanyType">—</td></tr>
+                    <tr><td class="lbl">经营品类</td><td class="val"><div class="cat-list" id="fCategories">—</div></td></tr>
+                    <tr><td class="lbl">联系人</td><td class="val" id="fContact">—</td></tr>
+                    <tr><td class="lbl">联系电话</td><td class="val" id="fPhone">—</td></tr>
+                    <tr><td class="lbl">邮箱</td><td class="val" id="fEmail">—</td></tr>
+                </table>
+
+                <div class="review-note" id="reviewNote" style="display:none">
+                    <strong>采购中心审核意见</strong>
+                    <span id="reviewNoteText"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右:待办/通知 -->
+        <div class="panel">
+            <div class="panel-head">
+                <h3>我的询价</h3>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+                <div class="empty-state">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <h4 id="bidsEmptyTitle">暂无询价单</h4>
+                    <p id="bidsEmptyDesc">审核通过后，采购部将按您的供应品类发起邀标。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+(function () {
+    if (!requireAuth()) return;
+    const user = SRMAuth.getUser();
+    if (!user) return;
+
+    // 只允许 supplier 角色访问;采购员跳采购中心
+    if (user.role !== "supplier") {
+        location.replace("admin/suppliers.html");
+        return;
+    }
+
+    const CAT_CN = {
+        steel_t700c: "T700C高强钢板", steel_plate: "板卷", steel_h: "型钢", steel_tube: "管材", steel_angle: "角槽钢",
+        bolt: "紧固件", bearing: "轴承", seal: "密封件", hydraulic_hose: "液压管", lock: "卡扣",
+        vfd: "变频器", contactor: "接触器", breaker: "断路器", connector: "连接器",
+        laser_cut: "激光切割", cnc_bend: "数控折弯", welding: "焊接", coating: "喷涂", machining: "机加工",
+        spare_parts: "备件", packaging: "包材", logistics: "物流", office: "办公",
+        steel: "钢材", fasteners: "紧固件",
+    };
+
+    const STATUS_PRESENT = {
+        pending: {
+            icon: "pending",
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+            title: "资料审核中",
+            desc: "采购中心已收到您的入驻申请，通常在 1-3 个工作日内完成审核。审核通过后将通过短信/邮件通知，并在此页面解锁询价报价功能。",
+        },
+        approved: {
+            icon: "approved",
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',
+            title: "入驻已通过，欢迎合作",
+            desc: "您已成为合格供应商，可参与采购询价、在线报价与定点协同。采购部将按您的供应品类主动邀标。",
+        },
+        rejected: {
+            icon: "rejected",
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+            title: "资料未通过审核",
+            desc: "请根据下方审核意见调整资料后重新提交。如有疑问可联系采购中心 0710-xxxxxxx。",
+        },
+        frozen: {
+            icon: "frozen",
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+            title: "合作已暂停",
+            desc: "您的合作状态被冻结，具体原因参见下方审核意见。恢复合作请联系采购中心。",
+        },
+    };
+
+    function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v || "—"; }
+
+    async function load() {
+        try {
+            const res = await srmFetch("/api/v1/suppliers/me");
+            const sup = await res.json();
+            if (!res.ok) throw new Error(sup.detail || "加载失败");
+
+            // 页头
+            setText("dashTitle", sup.company_name);
+            setText("dashSub", "欢迎回来，" + (sup.contact_name || sup.login_username));
+
+            // 审核状态大卡
+            const preset = STATUS_PRESENT[sup.status] || STATUS_PRESENT.pending;
+            const iconEl = document.getElementById("statusIcon");
+            iconEl.className = "status-icon " + preset.icon;
+            iconEl.innerHTML = preset.svg;
+            setText("statusTitle", preset.title);
+            setText("statusDesc", preset.desc);
+            setText("statusCode", sup.code);
+            const gradeWrap = document.getElementById("statusGradeWrap");
+            if (sup.grade) {
+                gradeWrap.innerHTML = `<span class="grade ${sup.grade}">${sup.grade} 级供应商</span>`;
+            } else {
+                gradeWrap.innerHTML = '<span style="color:var(--gray-400);font-size:12px">未定级</span>';
+            }
+
+            // 档案
+            setText("fCompanyName", sup.company_name);
+            setText("fCreditCode", sup.unified_credit_code);
+            setText("fLegalPerson", sup.legal_person);
+            setText("fFoundedDate", (sup.founded_date || "").slice(0, 10));
+            setText("fAddress", sup.registered_address);
+            setText("fCompanyType", sup.company_type);
+            const catEl = document.getElementById("fCategories");
+            if (sup.categories && sup.categories.length) {
+                catEl.innerHTML = sup.categories.map((c) => `<span class="cat-pill">${CAT_CN[c] || c}</span>`).join("");
+            }
+            setText("fContact", (sup.contact_name || "") + (sup.contact_position ? " · " + sup.contact_position : ""));
+            setText("fPhone", sup.contact_phone);
+            setText("fEmail", sup.contact_email);
+
+            // 审核备注
+            if (sup.review_note) {
+                document.getElementById("reviewNote").style.display = "block";
+                document.getElementById("reviewNoteText").textContent = sup.review_note;
+            }
+
+            // 询价区文案随状态
+            if (sup.status === "approved") {
+                setText("bidsEmptyTitle", "暂无新询价");
+                setText("bidsEmptyDesc", "采购部尚未发起与您品类匹配的采购询价。上线后将在此显示。");
+            } else if (sup.status === "rejected") {
+                setText("bidsEmptyTitle", "暂无法参与询价");
+                setText("bidsEmptyDesc", "请先通过资质审核后再参与询价。");
+            }
+        } catch (err) {
+            setText("dashSub", "加载失败：" + err.message);
+        }
+    }
+    load();
+})();
+</script>
+</body>
+</html>
