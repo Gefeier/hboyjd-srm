@@ -753,5 +753,260 @@ body { background: var(--gray-50); }
 </div>
 
 <script src="../shared.js"></script>
+<script>
+/* ================================================================
+   合格供应商库 · 接真API
+   - requireAuth (采购员权限)
+   - GET /api/v1/suppliers 列表+筛选+分页
+   - POST /api/v1/suppliers/{id}/review 审核
+   - POST /api/v1/suppliers/{id}/freeze 冻结
+================================================================ */
+(function () {
+    if (!requireAuth({ requireAdmin: true })) return;
+
+    // sidebar 更新真实用户
+    const u = SRMAuth.getUser();
+    if (u) {
+        const avatar = document.querySelector(".admin-user .avatar");
+        const nameEl = document.querySelector(".admin-user .name");
+        if (avatar) avatar.textContent = (u.name || u.username).charAt(0);
+        if (nameEl) nameEl.textContent = u.name || u.username;
+    }
+
+    // 删掉所有假数据行,留下header/foot
+    const table = document.querySelector(".supplier-table");
+    table.querySelectorAll(".st-row").forEach((r) => r.remove());
+    const foot = table.querySelector(".st-foot");
+
+    // 插入列表容器
+    const body = document.createElement("div");
+    body.id = "suppliersBody";
+    body.style.cssText = "min-height:120px";
+    table.insertBefore(body, foot);
+
+    // 状态 → 中文+样式
+    const STATUS_META = {
+        pending: { label: "待审核", cls: "pill-warn" },
+        approved: { label: "已通过", cls: "pill-ok" },
+        rejected: { label: "已驳回", cls: "pill-gray" },
+        frozen: { label: "已冻结", cls: "pill-gray" },
+    };
+
+    // 品类 key → 中文
+    const CAT_CN = {
+        steel_t700c: "T700C钢", steel_plate: "板卷", steel_h: "型钢", steel_tube: "管材", steel_angle: "角槽钢",
+        bolt: "紧固件", bearing: "轴承", seal: "密封件", hydraulic_hose: "液压管", lock: "卡扣",
+        vfd: "变频器", contactor: "接触器", breaker: "断路器", connector: "连接器",
+        laser_cut: "激光切割", cnc_bend: "数控折弯", welding: "焊接", coating: "喷涂", machining: "机加工",
+        spare_parts: "备件", packaging: "包材", logistics: "物流", office: "办公",
+        steel: "钢材", fasteners: "紧固件",
+    };
+
+    // 筛选态
+    const state = {
+        status: null,   // null=all, or pending/approved/...
+        grade: null,
+        keyword: "",
+        page: 1,
+        page_size: 10,
+    };
+
+    // 顶部筛选tab改语义:对接真状态
+    const filterBtns = document.querySelectorAll("[data-filter-group] button[data-filter]");
+    const FILTER_MAP = {
+        all: { label: "全部", status: null },
+        A: { label: "A级", grade: "A" },
+        B: { label: "B级", grade: "B" },
+        C: { label: "C级", grade: "C" },
+        review: { label: "待审核", status: "pending" },
+    };
+    filterBtns.forEach((b) => {
+        const k = b.dataset.filter;
+        if (FILTER_MAP[k]) b.textContent = FILTER_MAP[k].label;
+        b.addEventListener("click", () => {
+            filterBtns.forEach((x) => x.classList.remove("is-active"));
+            b.classList.add("is-active");
+            state.status = FILTER_MAP[k].status || null;
+            state.grade = FILTER_MAP[k].grade || null;
+            state.page = 1;
+            refresh();
+        });
+    });
+
+    // 搜索框
+    const searchInput = document.querySelector(".toolbar input.search");
+    if (searchInput) {
+        let timer;
+        searchInput.addEventListener("input", (e) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                state.keyword = e.target.value.trim();
+                state.page = 1;
+                refresh();
+            }, 350);
+        });
+    }
+
+    function escapeHTML(s) {
+        return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function formatDate(iso) {
+        if (!iso) return "—";
+        return iso.slice(0, 10);
+    }
+
+    function logoBox(name) {
+        const char = (name || "供").charAt(0);
+        const colors = ["blue", "green", "amber", "purple", "teal"];
+        const colorClass = colors[(name || "").length % colors.length];
+        return `<div class="logo-box ${colorClass}">${escapeHTML(char)}</div>`;
+    }
+
+    function renderRow(s) {
+        const status = STATUS_META[s.status] || { label: s.status, cls: "pill-gray" };
+        const cats = (s.categories || []).slice(0, 3).map((c) => `<span class="st-tag">${escapeHTML(CAT_CN[c] || c)}</span>`).join("");
+        const gradeCell = s.grade ? `<span class="st-grade g-${s.grade}">${s.grade}</span>` : `<span style="color:var(--gray-400);font-size:13px">未定级</span>`;
+
+        const canReview = s.status === "pending";
+        const canFreeze = s.status === "approved";
+        const canUnfreeze = s.status === "frozen";
+        const actions = `
+            <button class="icon-btn" title="查看档案" data-action="view" data-id="${s.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            ${canReview ? `<button class="icon-btn" title="审核" data-action="review" data-id="${s.id}" style="color:var(--blue-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></button>` : ""}
+            ${canFreeze ? `<button class="icon-btn" title="冻结" data-action="freeze" data-id="${s.id}" style="color:var(--warn-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>` : ""}
+            ${canUnfreeze ? `<span class="pill pill-gray" style="font-size:11px">已冻结</span>` : ""}
+        `;
+
+        return `
+        <div class="st-row">
+            <div class="st-co">
+                ${logoBox(s.company_name)}
+                <div class="info">
+                    <div class="name">${escapeHTML(s.company_name)}</div>
+                    <div class="code">${escapeHTML(s.code)} · ${escapeHTML(s.unified_credit_code || "")} · 注册 ${formatDate(s.created_at)}</div>
+                </div>
+            </div>
+            <div class="st-tags">${cats || '<span style="color:var(--gray-400);font-size:12px">—</span>'}</div>
+            <div>${gradeCell}</div>
+            <div class="st-last">
+                <div class="amount num" style="color:var(--gray-500)">—</div>
+                <div class="time">${escapeHTML(s.contact_name || "")}</div>
+            </div>
+            <div class="st-score">
+                <div style="color:var(--gray-400);font-size:12px">${escapeHTML(s.contact_phone || "")}</div>
+            </div>
+            <div><span class="pill ${status.cls}">${status.label}</span></div>
+            <div class="st-actions">${actions}</div>
+        </div>`;
+    }
+
+    function renderFoot(total) {
+        const totalPages = Math.max(1, Math.ceil(total / state.page_size));
+        const foot = document.querySelector(".st-foot");
+        foot.innerHTML = `
+            <span>共 <b class="num">${total}</b> 家 · 每页 ${state.page_size} 条</span>
+            <div class="st-pagi">
+                <button data-pg="prev" ${state.page <= 1 ? "disabled" : ""}>‹</button>
+                <button class="is-active">${state.page}</button>
+                <span style="color:var(--gray-400);padding:0 8px">/ ${totalPages}</span>
+                <button data-pg="next" ${state.page >= totalPages ? "disabled" : ""}>›</button>
+            </div>
+        `;
+        foot.querySelectorAll("[data-pg]").forEach((b) => {
+            b.addEventListener("click", () => {
+                if (b.dataset.pg === "prev" && state.page > 1) state.page--;
+                if (b.dataset.pg === "next" && state.page < totalPages) state.page++;
+                refresh();
+            });
+        });
+    }
+
+    function renderStats(items, total) {
+        const boxes = document.querySelectorAll(".stat-grid .stat-box .val.num");
+        if (!boxes.length) return;
+        // 简化:只显示当前分页用到的3个有用数字;若要全量stats需要更多API调用
+        const approved = items.filter((x) => x.status === "approved").length;
+        const A = items.filter((x) => x.grade === "A").length;
+        const pending = items.filter((x) => x.status === "pending").length;
+        const thisMonth = items.filter((x) => (x.created_at || "").slice(0, 7) === new Date().toISOString().slice(0, 7)).length;
+        const vals = [total, A, pending, thisMonth];
+        boxes.forEach((b, i) => {
+            b.childNodes[0].nodeValue = vals[i];
+        });
+    }
+
+    async function refresh() {
+        body.innerHTML = '<div style="padding:60px 0;text-align:center;color:var(--gray-400)">加载中...</div>';
+        const params = new URLSearchParams({ page: state.page, page_size: state.page_size });
+        if (state.status) params.set("status", state.status);
+        if (state.grade) params.set("grade", state.grade);
+        if (state.keyword) params.set("keyword", state.keyword);
+        try {
+            const res = await srmFetch("/api/v1/suppliers?" + params);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || "加载失败");
+            if (!data.items.length) {
+                body.innerHTML = '<div style="padding:80px 0;text-align:center;color:var(--gray-500)">暂无符合条件的供应商</div>';
+            } else {
+                body.innerHTML = data.items.map(renderRow).join("");
+            }
+            renderFoot(data.total);
+            renderStats(data.items, data.total);
+        } catch (err) {
+            body.innerHTML = `<div style="padding:60px 0;text-align:center;color:var(--danger-500)">加载失败: ${escapeHTML(err.message)}</div>`;
+        }
+    }
+
+    // 行内按钮事件代理
+    body.addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-action]");
+        if (!btn) return;
+        const id = btn.dataset.id;
+        const action = btn.dataset.action;
+
+        if (action === "view") {
+            alert("供应商档案详情页建设中。当前 id=" + id);
+            return;
+        }
+
+        if (action === "review") {
+            const choice = prompt("审核: 输入 A/B/C/D 通过并指定级别, 输入 reject 驳回:", "A");
+            if (!choice) return;
+            const isReject = choice.trim().toLowerCase() === "reject";
+            const grade = isReject ? null : choice.trim().toUpperCase();
+            if (!isReject && !["A", "B", "C", "D"].includes(grade)) {
+                alert("级别需为 A/B/C/D"); return;
+            }
+            const note = prompt("审核备注(可选):", isReject ? "资料不全" : "资料齐全,准入");
+            try {
+                const res = await srmFetch(`/api/v1/suppliers/${id}/review`, {
+                    method: "POST",
+                    body: JSON.stringify({ action: isReject ? "reject" : "approve", grade, note: note || null }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "审核失败");
+                refresh();
+            } catch (err) { alert("失败: " + err.message); }
+        }
+
+        if (action === "freeze") {
+            const note = prompt("冻结原因:", "合作暂停");
+            if (!note) return;
+            try {
+                const res = await srmFetch(`/api/v1/suppliers/${id}/freeze`, {
+                    method: "POST",
+                    body: JSON.stringify({ note }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "冻结失败");
+                refresh();
+            } catch (err) { alert("失败: " + err.message); }
+        }
+    });
+
+    refresh();
+})();
+</script>
 </body>
 </html>

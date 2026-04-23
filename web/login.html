@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · 欧阳聚德供应商协同平台</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.login-wrap {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    background: var(--white);
+}
+.login-side {
+    background: linear-gradient(135deg, var(--navy-900), var(--navy-700));
+    color: var(--white);
+    padding: 80px 60px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.login-side::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: url('assets/team-trucks.jpg') center / cover;
+    opacity: 0.18;
+}
+.login-side-inner { position: relative; }
+.login-brand-logo img { height: 44px; }
+.login-side h1 {
+    font-size: 38px; font-weight: 600; margin-top: 120px; line-height: 1.25;
+}
+.login-side h1 b { color: var(--blue-400); }
+.login-side p {
+    color: rgba(255,255,255,0.75);
+    font-size: 15px; line-height: 1.8; margin-top: 20px; max-width: 440px;
+}
+.login-side-footer {
+    position: relative;
+    font-size: 12px; color: rgba(255,255,255,0.4);
+    letter-spacing: 1px;
+}
+
+.login-form {
+    padding: 80px 60px;
+    display: flex; flex-direction: column; justify-content: center;
+}
+.login-form h2 {
+    font-size: 28px; font-weight: 600; color: var(--navy-900);
+    margin-bottom: 6px;
+}
+.login-form .form-hint {
+    color: var(--gray-500); font-size: 14px; margin-bottom: 36px;
+}
+.login-field { margin-bottom: 20px; }
+.login-field label {
+    display: block; font-size: 13px; color: var(--gray-600);
+    margin-bottom: 8px; font-weight: 500;
+}
+.login-field input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-family: inherit;
+    transition: all 0.15s;
+    background: var(--white);
+}
+.login-field input:focus {
+    outline: none;
+    border-color: var(--blue-500);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.login-err {
+    display: none;
+    padding: 10px 14px;
+    background: var(--danger-50);
+    color: #991b1b;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    border: 1px solid #fecaca;
+    margin-bottom: 20px;
+}
+.login-err.show { display: block; }
+.login-btn {
+    width: 100%;
+    padding: 13px;
+    background: var(--blue-600);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    margin-top: 8px;
+}
+.login-btn:hover { background: var(--blue-700); box-shadow: var(--shadow-blue); }
+.login-btn:disabled { background: var(--gray-300); cursor: wait; }
+.login-foot {
+    margin-top: 32px;
+    text-align: center;
+    color: var(--gray-500);
+    font-size: 13px;
+}
+.login-foot a { color: var(--blue-600); font-weight: 500; text-decoration: none; margin-left: 6px; }
+.login-foot a:hover { text-decoration: underline; }
+
+.seed-hint {
+    margin-top: 20px;
+    padding: 12px 14px;
+    background: var(--blue-50);
+    color: var(--blue-700);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    border: 1px solid var(--blue-100);
+}
+.seed-hint code { background: rgba(255,255,255,0.6); padding: 1px 6px; border-radius: 4px; font-family: ui-monospace, monospace; }
+
+@media (max-width: 768px) {
+    .login-wrap { grid-template-columns: 1fr; }
+    .login-side { display: none; }
+    .login-form { padding: 60px 24px; }
+}
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+    <!-- 左侧品牌区 -->
+    <aside class="login-side">
+        <div class="login-side-inner">
+            <a href="index.html" class="login-brand-logo">
+                <img src="assets/logo-white.png" alt="欧阳聚德">
+            </a>
+            <h1>欧阳聚德<br><b>供应商协同平台</b></h1>
+            <p>采购员与供应商使用同一登录入口。采购员登录后进入采购中心，供应商登录后进入工作台查看邀标与提交报价。</p>
+        </div>
+        <div class="login-side-footer">SRM · SUPPLIER RELATIONSHIP MANAGEMENT</div>
+    </aside>
+
+    <!-- 右侧表单 -->
+    <section class="login-form">
+        <h2>欢迎回来</h2>
+        <p class="form-hint">使用账号密码登录</p>
+
+        <div class="login-err" id="loginErr"></div>
+
+        <form id="loginForm">
+            <div class="login-field">
+                <label for="username">账号</label>
+                <input type="text" id="username" name="username" autocomplete="username" placeholder="采购员用户名 / 供应商手机号" required>
+            </div>
+            <div class="login-field">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" autocomplete="current-password" placeholder="请输入密码" required>
+            </div>
+            <button type="submit" class="login-btn" id="submitBtn">登 录</button>
+        </form>
+
+        <div class="seed-hint">
+            <strong>演示账号：</strong>用户名 <code>ouyang</code> · 密码 <code>ouyang123</code>（采购主管）
+        </div>
+
+        <div class="login-foot">
+            还不是供应商？<a href="register.html">立即入驻</a>
+        </div>
+    </section>
+</div>
+
+<script src="shared.js"></script>
+<script>
+(function () {
+    const form = document.getElementById("loginForm");
+    const errBox = document.getElementById("loginErr");
+    const btn = document.getElementById("submitBtn");
+
+    // 已登录则直接跳回
+    if (window.SRMAuth && SRMAuth.getToken()) {
+        const next = new URLSearchParams(location.search).get("next") || "index.html";
+        location.replace(next);
+        return;
+    }
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errBox.classList.remove("show");
+        btn.disabled = true; btn.textContent = "登录中...";
+
+        const payload = {
+            username: document.getElementById("username").value.trim(),
+            password: document.getElementById("password").value,
+        };
+        try {
+            const res = await fetch("/api/v1/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || "登录失败");
+            SRMAuth.setToken(data.access_token);
+            SRMAuth.setUser(data.user);
+            const next = new URLSearchParams(location.search).get("next") || (data.user.role === "supplier" ? "index.html" : "admin/suppliers.html");
+            location.replace(next);
+        } catch (err) {
+            errBox.textContent = err.message || "登录失败，请检查账号密码";
+            errBox.classList.add("show");
+            btn.disabled = false; btn.textContent = "登 录";
+        }
+    });
+})();
+</script>
+</body>
+</html>

@@ -2,6 +2,86 @@
    欧阳聚德招投标系统 — 共享脚本
    ============================================================ */
 
+/* ========== 登录态 SRMAuth ==========
+   localStorage存token+user;srmFetch自动带Authorization;
+   requireAuth未登录跳login;initAuthNav根据登录态渲染右上角
+*/
+window.SRMAuth = (function () {
+    const TK = "srm_token", UK = "srm_user";
+    return {
+        getToken: () => localStorage.getItem(TK),
+        setToken: (t) => localStorage.setItem(TK, t),
+        getUser: () => {
+            try { return JSON.parse(localStorage.getItem(UK) || "null"); }
+            catch { return null; }
+        },
+        setUser: (u) => localStorage.setItem(UK, JSON.stringify(u)),
+        clear: () => { localStorage.removeItem(TK); localStorage.removeItem(UK); },
+        isAdmin: () => {
+            const u = SRMAuth.getUser();
+            return u && (u.role === "buyer" || u.role === "admin");
+        },
+    };
+})();
+
+/* srmFetch: wrap fetch with auth header + 401自动登出 */
+window.srmFetch = async function (url, opts = {}) {
+    const headers = Object.assign({}, opts.headers || {});
+    const tk = SRMAuth.getToken();
+    if (tk) headers["Authorization"] = "Bearer " + tk;
+    if (opts.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+    const res = await fetch(url, Object.assign({}, opts, { headers }));
+    if (res.status === 401) {
+        SRMAuth.clear();
+        const here = location.pathname + location.search;
+        const loginPath = location.pathname.startsWith("/admin/") ? "../login.html" : "login.html";
+        location.replace(loginPath + "?next=" + encodeURIComponent(here));
+        throw new Error("未登录");
+    }
+    return res;
+};
+
+/* requireAuth: 页面顶部调用,未登录则跳login */
+window.requireAuth = function (opts = {}) {
+    const tk = SRMAuth.getToken();
+    if (!tk) {
+        const here = location.pathname + location.search;
+        const loginPath = location.pathname.startsWith("/admin/") ? "../login.html" : "login.html";
+        location.replace(loginPath + "?next=" + encodeURIComponent(here));
+        return false;
+    }
+    if (opts.requireAdmin && !SRMAuth.isAdmin()) {
+        alert("需要采购员权限,即将跳回首页");
+        location.replace(location.pathname.startsWith("/admin/") ? "../index.html" : "index.html");
+        return false;
+    }
+    return true;
+};
+
+/* 在navbar右上角注入登录态;需navbar存在且有.nav-cta占位 */
+function initAuthNav() {
+    const nav = document.querySelector(".navbar");
+    if (!nav) return;
+    const cta = nav.querySelector(".nav-cta");
+    const user = SRMAuth.getUser();
+    if (!cta) return;
+    if (user) {
+        // 已登录:显示用户名+下拉退出
+        const roleLabel = user.role === "buyer" ? "采购" : user.role === "admin" ? "管理" : "供应商";
+        cta.innerHTML = `<span style="display:inline-flex;align-items:center;gap:10px"><span>${user.name || user.username}</span><span style="font-size:11px;opacity:.6">${roleLabel}</span><span data-srm-logout style="margin-left:6px;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);font-size:11px;cursor:pointer">退出</span></span>`;
+        cta.removeAttribute("href");
+        cta.style.cursor = "default";
+        cta.addEventListener("click", (e) => {
+            if (e.target.closest("[data-srm-logout]")) {
+                e.preventDefault();
+                SRMAuth.clear();
+                location.href = location.pathname.startsWith("/admin/") ? "../index.html" : "index.html";
+            }
+        });
+    }
+    // 未登录保持原状(index.html的"供应商入驻"CTA)
+}
+
 // Navbar滚动效果
 function initNavbar() {
     const navbar = document.querySelector('.navbar');
@@ -197,6 +277,7 @@ function initAwardPicker() {
 
 document.addEventListener('DOMContentLoaded', () => {
     initNavbar();
+    initAuthNav();
     initCountdowns();
     initWizard();
     initBidTable();
