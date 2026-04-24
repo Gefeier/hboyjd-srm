@@ -885,8 +885,10 @@ body { background: var(--gray-50); }
         const canReview = s.status === "pending";
         const canFreeze = s.status === "approved";
         const canUnfreeze = s.status === "frozen";
+        const canInquire = s.status === "approved" || s.status === "pending_profile";
         const actions = `
             <button class="icon-btn" title="查看档案" data-action="view" data-id="${s.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            ${canInquire ? `<button class="icon-btn" title="为此供应商新建询价" data-action="new-inquiry" data-id="${s.id}" data-name="${escapeHTML(s.company_name)}" style="color:var(--blue-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>` : ""}
             ${canReview ? `<button class="icon-btn" title="审核" data-action="review" data-id="${s.id}" style="color:var(--blue-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></button>` : ""}
             ${canFreeze ? `<button class="icon-btn" title="冻结" data-action="freeze" data-id="${s.id}" style="color:var(--warn-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>` : ""}
             ${canUnfreeze ? `<span class="pill pill-gray" style="font-size:11px">已冻结</span>` : ""}
@@ -1017,7 +1019,138 @@ body { background: var(--gray-50); }
                 refresh();
             } catch (err) { alert("失败: " + err.message); }
         }
+
+        if (action === "new-inquiry") {
+            openMiniInquiryModal(parseInt(id), btn.dataset.name);
+        }
     });
+
+    /* ========== 为单一供应商快速建询价模态框 ========== */
+    function openMiniInquiryModal(supplierId, supplierName) {
+        const mask = document.createElement("div");
+        mask.style.cssText = "position:fixed;inset:0;background:rgba(10,22,40,0.55);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto";
+        mask.innerHTML = `
+            <div style="background:#fff;border-radius:16px;max-width:760px;width:100%;box-shadow:0 40px 80px rgba(0,0,0,0.3);overflow:hidden">
+                <div style="padding:22px 28px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <h3 style="font-size:17px;font-weight:600;color:#0a1628">为「${escapeHTML(supplierName)}」新建询价</h3>
+                        <p style="font-size:12.5px;color:#64748b;margin-top:4px">填物料清单,系统生成填报链接,你复制发给对方。</p>
+                    </div>
+                    <button id="miCancel" style="background:transparent;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:0;width:32px;height:32px;border-radius:8px">&times;</button>
+                </div>
+                <div style="padding:22px 28px;max-height:calc(100vh - 240px);overflow-y:auto">
+                    <div id="miErr" style="display:none;padding:10px 14px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;font-size:13px;margin-bottom:14px"></div>
+                    <div style="margin-bottom:16px">
+                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">询价单标题 <span style="color:#ef4444">*</span></label>
+                        <input id="miTitle" type="text" placeholder="如:2026年5月螺栓采购" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;font-family:inherit">
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+                        <div>
+                            <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">要求交期</label>
+                            <input id="miDelDate" type="text" placeholder="如:30天内" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;font-family:inherit">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">交货地址</label>
+                            <input id="miDelAddr" type="text" placeholder="湖北十堰欧阳聚德厂区" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;font-family:inherit">
+                        </div>
+                    </div>
+                    <div style="margin-bottom:16px">
+                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">备注说明</label>
+                        <textarea id="miRemark" placeholder="质量要求/付款方式/其他补充..." style="width:100%;min-height:60px;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:8px">物料清单 <span style="color:#94a3b8;font-size:11px">至少一行</span></label>
+                        <div id="miRowHead" style="display:grid;grid-template-columns:2fr 2fr 1fr 1fr 2fr auto;gap:8px;padding-bottom:6px;font-size:11px;color:#94a3b8">
+                            <div>物料名称 *</div><div>规格/型号</div><div>单位</div><div>数量 *</div><div>备注</div><div></div>
+                        </div>
+                        <div id="miRows"></div>
+                        <button type="button" id="miAddRow" style="margin-top:8px;padding:8px 14px;background:#eff6ff;color:#1d4ed8;border:1px dashed #dbeafe;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;width:100%">+ 添加一行</button>
+                    </div>
+                </div>
+                <div style="padding:16px 28px;border-top:1px solid #f1f5f9;background:#f8fafc;display:flex;justify-content:flex-end;gap:10px">
+                    <button id="miClose" style="padding:9px 20px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;cursor:pointer;font-family:inherit">取消</button>
+                    <button id="miSubmit" style="padding:9px 22px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit">创建并进入比价页</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(mask);
+
+        const close = () => mask.remove();
+        mask.querySelector("#miCancel").addEventListener("click", close);
+        mask.querySelector("#miClose").addEventListener("click", close);
+        mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
+
+        const rowsEl = mask.querySelector("#miRows");
+        function addRow() {
+            const div = document.createElement("div");
+            div.className = "mi-row";
+            div.style.cssText = "display:grid;grid-template-columns:2fr 2fr 1fr 1fr 2fr auto;gap:8px;margin-bottom:8px";
+            div.innerHTML = `
+                <input name="name" placeholder="如:六角螺栓M12" style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit">
+                <input name="spec" placeholder="如:GB/T5782 8.8 镀锌" style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit">
+                <input name="unit" value="个" style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit">
+                <input name="qty" type="number" min="0" step="0.01" placeholder="0" style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit">
+                <input name="remark" placeholder="选填" style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit">
+                <button type="button" data-del style="background:transparent;border:1px solid #e2e8f0;color:#94a3b8;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:14px">&times;</button>
+            `;
+            rowsEl.appendChild(div);
+        }
+        addRow(); addRow();
+        mask.querySelector("#miAddRow").addEventListener("click", addRow);
+        rowsEl.addEventListener("click", (e) => {
+            if (e.target.closest("[data-del]")) {
+                if (rowsEl.children.length <= 1) { alert("至少保留一行"); return; }
+                e.target.closest(".mi-row").remove();
+            }
+        });
+
+        mask.querySelector("#miSubmit").addEventListener("click", async () => {
+            const errEl = mask.querySelector("#miErr");
+            const showErr = (t) => { errEl.textContent = t; errEl.style.display = "block"; };
+            errEl.style.display = "none";
+
+            const title = mask.querySelector("#miTitle").value.trim();
+            if (!title || title.length < 2) return showErr("请填写询价单标题");
+            const items = [];
+            for (const row of rowsEl.querySelectorAll(".mi-row")) {
+                const name = row.querySelector('[name=name]').value.trim();
+                const qty = parseFloat(row.querySelector('[name=qty]').value);
+                if (!name) continue;
+                if (!qty || qty <= 0) return showErr(`物料「${name}」数量必须 > 0`);
+                items.push({
+                    name,
+                    spec: row.querySelector('[name=spec]').value.trim() || null,
+                    unit: row.querySelector('[name=unit]').value.trim() || "个",
+                    qty,
+                    remark: row.querySelector('[name=remark]').value.trim() || null,
+                });
+            }
+            if (!items.length) return showErr("请至少添加一行物料");
+
+            const submitBtn = mask.querySelector("#miSubmit");
+            submitBtn.disabled = true; submitBtn.textContent = "提交中...";
+            try {
+                const res = await srmFetch("/api/v1/inquiries", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        title, remark: mask.querySelector("#miRemark").value.trim() || null,
+                        delivery_date: mask.querySelector("#miDelDate").value.trim() || null,
+                        delivery_address: mask.querySelector("#miDelAddr").value.trim() || null,
+                        items, supplier_ids: [supplierId],
+                    }),
+                });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail || "创建失败");
+                close();
+                // 直接跳详情页(带 new=1 提示)
+                location.href = "inquiry-detail.html?id=" + d.id + "&new=1";
+            } catch (err) {
+                showErr(err.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = "创建并进入比价页";
+            }
+        });
+    }
 
     /* ========== 新增供应商(admin建档) ========== */
     function openCreateSupplierModal() {

@@ -12,6 +12,7 @@ from app.db import init_db
 from app.routers.auth import router as auth_router
 from app.routers.inquiries import my_router as my_inquiries_router
 from app.routers.inquiries import router as inquiries_router
+from app.routers.public_quote import router as public_quote_router
 from app.routers.suppliers import router as suppliers_router
 from app.seed import seed_default_user
 
@@ -54,6 +55,12 @@ async def request_validation_handler(_: Request, exc: RequestValidationError) ->
 
 @app.on_event("startup")
 def on_startup() -> None:
+    # 安全提醒:secret_key 如果还是默认值,响亮告警
+    if settings.secret_key in ("replace-me-in-production", "change-me", ""):
+        logger.error("⚠ SECURITY: SRM_SECRET_KEY 还是默认值!请在生产环境设置一个强随机值。JWT 可被伪造。")
+    if len(settings.secret_key) < 32:
+        logger.warning("⚠ SECURITY: SRM_SECRET_KEY 长度 < 32 字符,建议使用至少 256 位随机字符串")
+
     if settings.auto_create_tables:
         init_db()
         seed_default_user()
@@ -61,8 +68,9 @@ def on_startup() -> None:
         client = redis.from_url(settings.redis_url, decode_responses=True)
         client.ping()
         app.state.redis = client
+        logger.info("Redis 连接成功,登录防爆破已启用")
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Redis 连接失败，当前以降级模式启动: %s", exc)
+        logger.warning("⚠ Redis 连接失败,登录防爆破功能已降级(暂时放行): %s", exc)
         app.state.redis = None
 
 
@@ -75,3 +83,4 @@ app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(suppliers_router, prefix=settings.api_v1_prefix)
 app.include_router(inquiries_router, prefix=settings.api_v1_prefix)
 app.include_router(my_inquiries_router, prefix=settings.api_v1_prefix)
+app.include_router(public_quote_router, prefix=settings.api_v1_prefix)

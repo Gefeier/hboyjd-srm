@@ -55,6 +55,7 @@ class SupplierMini(BaseModel):
 class InviteRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     supplier_id: int
+    token: str  # 供采购员复制 magic link 用
     invited_at: datetime
     quoted_at: datetime | None = None
 
@@ -151,3 +152,44 @@ class MyQuoteLineSubmit(BaseModel):
 
 class MyQuoteSubmit(BaseModel):
     lines: list[MyQuoteLineSubmit] = Field(min_length=1)
+
+
+# ============== 公开 magic link 填报(免登录) ==============
+
+class PublicInquiryItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    spec: str | None = None
+    unit: str
+    qty: Decimal
+    remark: str | None = None
+    sort_order: int = 0
+    my_unit_price: Decimal | None = None
+    my_note: str | None = None
+
+
+class PublicQuoteView(BaseModel):
+    """供应商通过 magic link 看到的视图 — 不含任何其他供应商的信息"""
+    model_config = ConfigDict(from_attributes=True)
+    code: str
+    title: str
+    remark: str | None = None
+    delivery_date: str | None = None
+    delivery_address: str | None = None
+    buyer_company_name: str = "湖北欧阳聚德汽车有限公司"  # 固定
+    supplier_company_name: str  # 该家自己
+    status: InquiryStatus
+    created_at: datetime
+    quoted_at: datetime | None = None
+    items: list[PublicInquiryItem] = []
+
+
+class PublicQuoteLineSubmit(BaseModel):
+    item_id: int
+    unit_price: Decimal = Field(ge=0)
+    note: str | None = Field(default=None, max_length=256)
+
+
+class PublicQuoteSubmit(BaseModel):
+    lines: list[PublicQuoteLineSubmit] = Field(min_length=1)

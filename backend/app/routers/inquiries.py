@@ -1,8 +1,9 @@
 """比价单(询价单) — 采购员建单,供应商填价,采购部内部比价"""
 
+import secrets
 from datetime import UTC, datetime, time
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func
 from sqlmodel import Session, select
 
@@ -119,10 +120,14 @@ def create_inquiry(
             sort_order=idx,
         ))
 
-    # 邀标
+    # 邀标 + 自动生成 magic link token
     for sid in payload.supplier_ids:
         if sid in valid_ids:
-            session.add(InquiryInvite(inquiry_id=inquiry.id, supplier_id=sid))
+            session.add(InquiryInvite(
+                inquiry_id=inquiry.id,
+                supplier_id=sid,
+                token=secrets.token_urlsafe(32),
+            ))
 
     session.commit()
     session.refresh(inquiry)
@@ -184,7 +189,7 @@ def _load_detail(inquiry_id: int, session: Session) -> InquiryDetail:
         **base.model_dump(),
         items=[InquiryItemRead.model_validate(i) for i in items],
         suppliers=[SupplierMini.model_validate(s) for s in supplier_rows],
-        invites=[InviteRead(supplier_id=v.supplier_id, invited_at=v.invited_at, quoted_at=v.quoted_at) for v in invites],
+        invites=[InviteRead(supplier_id=v.supplier_id, token=v.token, invited_at=v.invited_at, quoted_at=v.quoted_at) for v in invites],
         quote_lines=[QuoteLineRead.model_validate(q) for q in lines],
     )
 

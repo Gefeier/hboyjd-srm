@@ -89,16 +89,21 @@ class InquiryItem(SQLModel, table=True):
 
 
 class InquiryInvite(SQLModel, table=True):
-    """比价单邀标记录:标识哪些供应商可以填这张单"""
+    """比价单邀标记录:标识哪些供应商可以填这张单。
+    token 用于生成 magic link — 供应商不用注册登录,点链接直接填价。
+    """
     __tablename__ = "inquiry_invite"
     __table_args__ = (
         Index("ix_invite_inquiry_supplier", "inquiry_id", "supplier_id", unique=True),
         Index("ix_invite_supplier_inquiry", "supplier_id", "inquiry_id"),
+        Index("ix_invite_token", "token", unique=True),
     )
 
     id: int | None = Field(default=None, primary_key=True)
     inquiry_id: int = Field(sa_column=Column(Integer, ForeignKey("inquiry.id", ondelete="CASCADE"), nullable=False))
     supplier_id: int = Field(sa_column=Column(Integer, ForeignKey("supplier.id", ondelete="CASCADE"), nullable=False))
+    # magic link token — 43 字符 URL-safe base64(32字节随机)
+    token: str = Field(sa_column=Column(String(64), nullable=False, unique=True))
     invited_at: datetime = Field(
         default_factory=utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, default=utcnow),

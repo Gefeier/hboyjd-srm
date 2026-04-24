@@ -85,11 +85,21 @@ body { background: var(--gray-50); }
 .cmp-tbl .item-spec { font-size: 11.5px; color: var(--gray-500); margin-top: 2px; font-weight: 400; }
 .cmp-tbl .qty-unit { font-size: 11.5px; color: var(--gray-400); font-weight: 400; white-space: nowrap; }
 
-.supp-head { min-width: 150px; }
+.supp-head { min-width: 160px; }
 .supp-head .name { color: var(--navy-900); font-weight: 500; margin-bottom: 2px; }
 .supp-head .sub { font-size: 11px; color: var(--gray-500); font-weight: 400; }
 .supp-head .sub b { color: var(--warn-500); font-weight: 500; }
 .supp-head .sub b.done { color: var(--ok-500); }
+.supp-head .link-row { display: inline-flex; gap: 4px; margin-top: 6px; justify-content: center; }
+.supp-head .lk-btn {
+    padding: 3px 9px; font-size: 11px; border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-600);
+    cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 3px;
+    transition: all 0.14s;
+}
+.supp-head .lk-btn:hover { border-color: var(--blue-500); color: var(--blue-600); background: var(--blue-50); }
+.supp-head .lk-btn svg { width: 11px; height: 11px; }
+.supp-head .lk-btn.copied { background: var(--ok-50); color: var(--ok-500); border-color: #6ee7b7; }
 
 .cell-price { font-variant-numeric: tabular-nums; color: var(--gray-700); }
 .cell-price.lowest { background: var(--ok-50); color: var(--ok-500); font-weight: 600; }
@@ -308,13 +318,30 @@ body { background: var(--gray-50); }
         if (!items.length || !suppliers.length) {
             matrix = `<div class="empty-state"><h4>暂无物料或供应商</h4></div>`;
         } else {
+            // 建立 supplier_id -> token 索引
+            const tokenBySup = {};
+            (d.invites || []).forEach(v => { tokenBySup[v.supplier_id] = v.token; });
+
             const theadSup = suppliers.map(s => {
                 const t = totals[s.id];
                 const doneFlag = t.qty === items.length;
                 const quoteStatus = t.qty === 0 ? '<b>未报价</b>' : doneFlag ? `<b class="done">已全报</b>` : `<b>部分 ${t.qty}/${items.length}</b>`;
+                const tk = tokenBySup[s.id];
+                const linkRow = tk && d.status === "open" ? `
+                    <div class="link-row">
+                        <button class="lk-btn" data-copy-link="${tk}" title="复制填报链接,发给供应商">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                            复制链接
+                        </button>
+                        <button class="lk-btn" data-open-link="${tk}" title="预览供应商看到的页面">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            预览
+                        </button>
+                    </div>` : "";
                 return `<th class="supp-head">
                     <div class="name">${esc(s.company_name)}</div>
                     <div class="sub">${esc(s.code)} · ${quoteStatus}</div>
+                    ${linkRow}
                 </th>`;
             }).join("");
 
@@ -415,6 +442,29 @@ body { background: var(--gray-50); }
                 if (!r.ok) throw new Error((await r.json()).detail || "操作失败");
                 load();
             } catch (err) { alert(err.message); }
+        }));
+
+        // 复制填报链接
+        document.querySelectorAll("[data-copy-link]").forEach(btn => btn.addEventListener("click", () => {
+            const tk = btn.dataset.copyLink;
+            const url = location.origin + "/q.html?t=" + encodeURIComponent(tk);
+            const origHTML = btn.innerHTML;
+            const done = () => {
+                btn.classList.add("copied");
+                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已复制';
+                setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = origHTML; }, 1800);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(done, () => prompt("复制失败,请手动复制:", url));
+            } else {
+                prompt("请复制以下链接:", url);
+            }
+        }));
+
+        // 预览供应商视角
+        document.querySelectorAll("[data-open-link]").forEach(btn => btn.addEventListener("click", () => {
+            const tk = btn.dataset.openLink;
+            window.open("/q.html?t=" + encodeURIComponent(tk), "_blank");
         }));
     }
 
