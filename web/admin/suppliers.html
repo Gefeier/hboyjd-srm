@@ -1041,7 +1041,7 @@ body { background: var(--gray-50); }
                 <div style="padding:22px 28px;max-height:calc(100vh - 240px);overflow-y:auto">
                     <div id="miErr" style="display:none;padding:10px 14px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;font-size:13px;margin-bottom:14px"></div>
                     <div style="margin-bottom:16px">
-                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">询价单标题 <span style="color:#ef4444">*</span></label>
+                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">询价单标题 <span style="color:#ef4444">*</span> <span style="color:#94a3b8;font-weight:400">(供应商可见)</span></label>
                         <input id="miTitle" type="text" placeholder="如:2026年5月螺栓采购" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;font-family:inherit">
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
@@ -1055,8 +1055,8 @@ body { background: var(--gray-50); }
                         </div>
                     </div>
                     <div style="margin-bottom:16px">
-                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">备注说明</label>
-                        <textarea id="miRemark" placeholder="质量要求/付款方式/其他补充..." style="width:100%;min-height:60px;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
+                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">需求说明 <span style="color:#94a3b8;font-weight:400">(供应商可见 · 留空可省略)</span></label>
+                        <textarea id="miRemark" placeholder="给供应商看的说明:品类范围/付款方式/质量要求等。不写也行。" style="width:100%;min-height:60px;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
                     </div>
                     <div>
                         <label style="display:block;font-size:12px;color:#64748b;margin-bottom:8px">物料清单 <span style="color:#94a3b8;font-size:11px">可选 · 留空则由供应商自由报价</span></label>

@@ -78,11 +78,13 @@ body {
 
 /* ===== 上传区 ===== */
 .upload-zone {
+    display: block;  /* label 默认 inline,必须设为 block 才能让内部布局正常 */
     margin: 20px 22px; padding: 32px 20px;
     border: 2px dashed var(--gray-200); border-radius: var(--radius);
     text-align: center; cursor: pointer;
     background: var(--gray-50);
     transition: all 0.2s;
+    box-sizing: border-box;
 }
 .upload-zone:hover, .upload-zone.drag {
     border-color: var(--blue-500); background: var(--blue-50);
@@ -371,9 +373,9 @@ body {
 
           <div class="salutation"><b>${esc(d.supplier_company_name)}</b>:</div>
           <div class="intro">
-              您好!我司(湖北欧阳聚德汽车有限公司)${d.title ? "因「" + esc(d.title) + "」" : "因生产需要"},
-              现请贵司提供产品报价。您可在下方上传报价单(PDF/Excel/图片) ,
-              也可直接在「报价明细」栏手动填写。系统会识别附件内容自动填入表格,请核对无误后提交。
+              您好!我司(湖北欧阳聚德汽车有限公司)因采购业务需要,现请贵司提供产品报价单。
+              您可在下方上传报价单(支持 PDF、Excel、图片),也可直接在「报价明细」栏手动填写。
+              填写完成后点击底部「提交报价」按钮即可。如有疑问请联系对接采购员。
           </div>
 
           <div class="req-box">

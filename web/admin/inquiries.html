@@ -253,7 +253,7 @@ body { background: var(--gray-50); }
                     <h5>基本信息</h5>
                     <div class="form-row full">
                         <div class="fld">
-                            <label>询价单标题 <span class="req">*</span></label>
+                            <label>询价单标题 <span class="req">*</span> <span style="color:var(--gray-400);font-weight:400">(供应商可见)</span></label>
                             <input type="text" name="title" placeholder="如:2026年5月五金标件采购" required>
                         </div>
                     </div>
@@ -269,8 +269,8 @@ body { background: var(--gray-50); }
                     </div>
                     <div class="form-row full">
                         <div class="fld">
-                            <label>备注说明</label>
-                            <textarea name="remark" placeholder="质量要求、付款方式、其他补充..."></textarea>
+                            <label>需求说明 <span style="color:var(--gray-400);font-weight:400">(供应商可见 · 留空可省略)</span></label>
+                            <textarea name="remark" placeholder="给供应商看的说明:品类范围、付款方式、质量要求等。不写也行。"></textarea>
                         </div>
                     </div>
                 </div>
