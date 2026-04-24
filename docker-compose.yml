@@ -23,6 +23,13 @@ services:
     container_name: hboyjd-srm-api
     env_file:
       - ./backend/.env
+    environment:
+      # MiniMax 国际版 — 用于自动解析供应商上传的报价单
+      # 账户小额度测试用,泄露损失可控;换 key 改这里即可
+      MINIMAX_API_KEY: "sk-api-T2KiR0Kges-t6YPmwPxuwcVxKHMr-CaBpXZAeFt004dOViMi8P2M9eA7KVO-uXKIZnzlTwtFHEwBSmFCEWgauWe2G2W_JO2r3R9fzngGOkKYdL20eePpU2g"
+      MINIMAX_BASE_URL: "https://api.minimaxi.com/v1"
+      MINIMAX_MODEL: "MiniMax-Text-01"
+      MINIMAX_VISION_MODEL: "MiniMax-VL-01"
     depends_on:
       - db
       - redis
