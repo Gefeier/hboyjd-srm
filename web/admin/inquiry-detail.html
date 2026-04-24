@@ -300,15 +300,15 @@ body { background: var(--gray-50); }
           </section>
         `;
 
-        // 要求说明
+        // 要求说明(去掉交货地址 — 供应商报价阶段不需要)
         const req = `
           <section class="req-card">
             <h4>要求说明</h4>
             <div class="req-grid">
                 <div class="fld"><div class="l">要求交期</div><div class="v">${esc(d.delivery_date || "—")}</div></div>
-                <div class="fld"><div class="l">交货地址</div><div class="v">${esc(d.delivery_address || "—")}</div></div>
                 <div class="fld"><div class="l">邀请/已报</div><div class="v">${suppliers.length} 家 / <b style="color:${d.quoted_count === suppliers.length && suppliers.length > 0 ? 'var(--ok-500)' : 'var(--warn-500)'}">${d.quoted_count}</b> 家</div></div>
-                ${d.remark ? `<div class="req-remark">备注:${esc(d.remark)}</div>` : ""}
+                <div class="fld"><div class="l">物料模式</div><div class="v">${items.length > 0 ? "采购员预设(方式1)" : "供应商自报(方式4)"}</div></div>
+                ${d.remark ? `<div class="req-remark">需求说明:${esc(d.remark)}</div>` : ""}
             </div>
           </section>
         `;
@@ -407,7 +407,16 @@ body { background: var(--gray-50); }
             `;
         }
 
-        document.getElementById("content").innerHTML = head + req + matrix;
+        // 若无 preset items,matrix 显示占位,主要数据在下方"各家报价详情"里
+        const matrixFinal = items.length > 0 ? matrix : "";
+        // 占位 — 各家报价详情区(异步加载)
+        const sqPlaceholder = `<section id="sqBox"><div style="padding:40px;text-align:center;color:var(--gray-400)">加载各家报价详情...</div></section>`;
+
+        document.getElementById("content").innerHTML = head + req + matrixFinal + sqPlaceholder;
+
+        // 把关键数据存闭包,供后面的"各家报价"和复制链接按钮用
+        window.__d = d;
+        loadSupplierQuotes();
 
         // 绑定操作
         const closeBtn = document.getElementById("closeBtn");
@@ -465,6 +474,198 @@ body { background: var(--gray-50); }
         document.querySelectorAll("[data-open-link]").forEach(btn => btn.addEventListener("click", () => {
             const tk = btn.dataset.openLink;
             window.open("/q.html?t=" + encodeURIComponent(tk), "_blank");
+        }));
+    }
+
+    async function loadSupplierQuotes() {
+        const box = document.getElementById("sqBox");
+        if (!box) return;
+        try {
+            const res = await srmFetch(`/api/v1/inquiries/${inquiryId}/supplier-quotes`);
+            if (!res.ok) throw new Error((await res.json()).detail || "加载失败");
+            const data = await res.json();
+            renderSupplierQuotes(box, data);
+        } catch (err) {
+            box.innerHTML = `<div style="padding:20px;color:var(--danger-500)">各家报价加载失败: ${err.message}</div>`;
+        }
+    }
+
+    function renderSupplierQuotes(box, data) {
+        const suppliers = data.suppliers || [];
+        if (!suppliers.length) {
+            box.innerHTML = "";
+            return;
+        }
+
+        const fmtDateTime = (iso) => iso ? iso.slice(0, 16).replace("T", " ") : "—";
+        const fmtSize = (n) => n < 1024 ? n + " B" : n < 1024*1024 ? (n/1024).toFixed(1) + " KB" : (n/1024/1024).toFixed(2) + " MB";
+
+        // 最低总价高亮(仅在有报价的人里比)
+        const quotedSups = suppliers.filter(s => s.quoted_at);
+        let lowestSid = null;
+        if (quotedSups.length > 1) {
+            const sorted = [...quotedSups].sort((a, b) => Number(a.total_amount) - Number(b.total_amount));
+            if (sorted[0].total_amount > 0) lowestSid = sorted[0].supplier_id;
+        }
+
+        const cards = suppliers.map(s => {
+            const isLowest = s.supplier_id === lowestSid;
+            const isAwarded = s.supplier_id === (data.awarded_supplier_id || null);
+            const headerCls = isLowest ? "sq-head sq-head-low" : "sq-head";
+            const badge = s.quoted_at
+                ? (isLowest ? '<span class="sq-badge sq-b-low">最低总价</span>' : '<span class="sq-badge sq-b-ok">已报价</span>')
+                : '<span class="sq-badge sq-b-wait">未报价</span>';
+
+            const rowsHtml = s.rows.length ? s.rows.map(r => `
+                <tr>
+                    <td style="color:var(--navy-900);font-weight:500">${esc(r.name)}${r.source === "ai_parsed" ? ' <span style="font-size:10px;padding:1px 6px;background:var(--blue-50);color:var(--blue-700);border-radius:999px;margin-left:4px">AI识别</span>' : ''}</td>
+                    <td style="color:var(--gray-600);font-size:12px">${esc(r.spec || "—")}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">${r.qty != null ? Number(r.qty) + " " + esc(r.unit) : "<span style='color:var(--gray-400)'>—</span>"}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500;color:var(--navy-900)">¥${fmtMoney(r.unit_price)}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">${r.qty != null ? "¥" + fmtMoney(Number(r.qty) * Number(r.unit_price)) : "<span style='color:var(--gray-400)'>—</span>"}</td>
+                    <td style="color:var(--gray-500);font-size:11.5px">${esc(r.note || "")}</td>
+                </tr>
+            `).join("") : `<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:20px">未填明细</td></tr>`;
+
+            const attsHtml = s.attachments.length ? s.attachments.map(a => `
+                <a href="/api/v1/inquiries/${inquiryId}/attachment/${a.id}/download" class="sq-att" target="_blank" download>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>${esc(a.filename)}</span>
+                    <span style="color:var(--gray-400);font-size:11px">${fmtSize(a.file_size)}</span>
+                </a>
+            `).join("") : "";
+
+            const awardBtnHtml = (window.__d && window.__d.status !== "closed") && s.quoted_at
+                ? `<button class="sq-award" data-award="${s.supplier_id}">定标给他</button>`
+                : (isAwarded ? '<span class="sq-awarded">✓ 已中标</span>' : "");
+
+            // 复制填报链接按钮(从外层 d.invites 找 token)
+            const invites = (window.__d && window.__d.invites) || [];
+            const invite = invites.find(v => v.supplier_id === s.supplier_id);
+            const linkBtnHtml = (invite && window.__d && window.__d.status !== "closed") ? `
+                <button class="sq-link-btn" data-copy-link="${invite.token}" title="复制填报链接发给供应商">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                    复制链接
+                </button>
+                <button class="sq-link-btn" data-open-link="${invite.token}" title="预览供应商看到的页面">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            ` : "";
+
+            return `
+                <div class="sq-card ${isLowest ? "sq-card-low" : ""}">
+                    <div class="${headerCls}">
+                        <div>
+                            <div class="sq-name">${esc(s.company_name)}</div>
+                            <div class="sq-meta">${esc(s.supplier_code)}${s.contact_phone ? " · " + esc(s.contact_phone) : ""} · ${s.quoted_at ? "提交于 " + fmtDateTime(s.quoted_at) : "尚未提交"}</div>
+                        </div>
+                        <div class="sq-right">${badge}${linkBtnHtml}${awardBtnHtml}</div>
+                    </div>
+                    <div class="sq-body">
+                        ${s.rows.length ? `
+                        <table class="sq-tbl">
+                            <thead><tr><th>产品</th><th>规格</th><th style="text-align:right">数量</th><th style="text-align:right">单价</th><th style="text-align:right">小计</th><th>备注</th></tr></thead>
+                            <tbody>${rowsHtml}</tbody>
+                        </table>` : rowsHtml.includes("未填") ? `<div style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px">未填报价明细</div>` : ""}
+                        ${attsHtml ? `<div class="sq-atts"><div class="sq-atts-title">附件(${s.attachments.length})</div><div class="sq-att-list">${attsHtml}</div></div>` : ""}
+                        <div class="sq-total">
+                            <span style="color:var(--gray-500)">总金额:</span>
+                            <span class="sq-total-val ${isLowest ? "low" : ""}">¥ ${fmtMoney(s.total_amount)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        box.innerHTML = `
+            <style>
+                .sq-wrap { margin-top: 22px; }
+                .sq-title { font-size: 16px; color: var(--navy-900); font-weight: 600; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+                .sq-title .hint { font-size: 12px; color: var(--gray-500); font-weight: 400; }
+                .sq-card { background: #fff; border: 1px solid var(--gray-100); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
+                .sq-card-low { border-color: var(--ok-500); box-shadow: 0 0 0 1px var(--ok-500); }
+                .sq-head { padding: 14px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; background: var(--gray-50); }
+                .sq-head-low { background: var(--ok-50); }
+                .sq-name { font-size: 15px; font-weight: 600; color: var(--navy-900); }
+                .sq-meta { font-size: 11.5px; color: var(--gray-500); margin-top: 3px; }
+                .sq-right { display: flex; align-items: center; gap: 10px; }
+                .sq-badge { padding: 4px 12px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 500; }
+                .sq-b-low { background: var(--ok-500); color: #fff; }
+                .sq-b-ok { background: var(--blue-50); color: var(--blue-700); }
+                .sq-b-wait { background: var(--gray-100); color: var(--gray-500); }
+                .sq-award { padding: 6px 14px; background: var(--white); border: 1px solid var(--blue-200); color: var(--blue-700); border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: inherit; }
+                .sq-award:hover { background: var(--blue-600); color: #fff; border-color: var(--blue-600); }
+                .sq-awarded { padding: 5px 14px; background: var(--ok-500); color: #fff; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; }
+                .sq-link-btn {
+                    padding: 5px 10px; background: var(--white); color: var(--gray-600);
+                    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+                    font-size: 11.5px; cursor: pointer; font-family: inherit;
+                    display: inline-flex; align-items: center; gap: 4px; transition: all 0.14s;
+                }
+                .sq-link-btn:hover { border-color: var(--blue-500); color: var(--blue-600); background: var(--blue-50); }
+                .sq-link-btn.copied { background: var(--ok-50); color: var(--ok-500); border-color: #6ee7b7; }
+                .sq-body { padding: 6px 0 14px; }
+                .sq-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+                .sq-tbl th { background: var(--gray-50); padding: 8px 14px; font-size: 11px; color: var(--gray-500); text-align: left; font-weight: 500; border-bottom: 1px solid var(--gray-100); }
+                .sq-tbl td { padding: 10px 14px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+                .sq-tbl tr:last-child td { border-bottom: none; }
+                .sq-atts { padding: 10px 20px; background: var(--gray-50); border-top: 1px solid var(--gray-100); }
+                .sq-atts-title { font-size: 11px; color: var(--gray-500); margin-bottom: 6px; }
+                .sq-att-list { display: flex; flex-wrap: wrap; gap: 8px; }
+                .sq-att {
+                    display: inline-flex; align-items: center; gap: 6px;
+                    padding: 6px 12px; background: #fff; border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-sm); font-size: 12.5px; color: var(--gray-700);
+                    text-decoration: none; transition: all 0.15s;
+                }
+                .sq-att:hover { border-color: var(--blue-500); color: var(--blue-700); background: var(--blue-50); }
+                .sq-total { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 12px 20px 4px; font-size: 13.5px; }
+                .sq-total-val { font-size: 18px; font-weight: 600; color: var(--navy-900); font-variant-numeric: tabular-nums; }
+                .sq-total-val.low { color: var(--ok-500); }
+            </style>
+            <div class="sq-wrap">
+                <div class="sq-title">
+                    <span>各家报价详情</span>
+                    <span class="hint">${suppliers.length} 家 · ${quotedSups.length} 已报${lowestSid ? " · 绿框为最低总价" : ""}</span>
+                </div>
+                ${cards}
+            </div>
+        `;
+
+        // 绑定复制链接
+        box.querySelectorAll("[data-copy-link]").forEach(btn => btn.addEventListener("click", () => {
+            const tk = btn.dataset.copyLink;
+            const url = location.origin + "/q.html?t=" + encodeURIComponent(tk);
+            const origHTML = btn.innerHTML;
+            const done = () => {
+                btn.classList.add("copied");
+                btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已复制';
+                setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = origHTML; }, 1800);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(done, () => prompt("复制失败,请手动:", url));
+            } else {
+                prompt("请复制:", url);
+            }
+        }));
+        box.querySelectorAll("[data-open-link]").forEach(btn => btn.addEventListener("click", () => {
+            window.open("/q.html?t=" + encodeURIComponent(btn.dataset.openLink), "_blank");
+        }));
+
+        // 绑定定标按钮
+        box.querySelectorAll("[data-award]").forEach(btn => btn.addEventListener("click", async () => {
+            const sid = parseInt(btn.dataset.award);
+            const sup = data.suppliers.find(s => s.supplier_id === sid);
+            const note = prompt(`定标给「${sup.company_name}」,可备注理由(可选):`, "");
+            if (note === null) return;
+            try {
+                const r = await srmFetch(`/api/v1/inquiries/${inquiryId}/award`, {
+                    method: "POST",
+                    body: JSON.stringify({ supplier_id: sid, note: note || null }),
+                });
+                if (!r.ok) throw new Error((await r.json()).detail || "操作失败");
+                load();
+            } catch (err) { alert(err.message); }
         }));
     }
 

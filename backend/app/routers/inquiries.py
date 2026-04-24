@@ -1,31 +1,42 @@
 """比价单(询价单) — 采购员建单,供应商填价,采购部内部比价"""
 
+import os
 import secrets
 from datetime import UTC, datetime, time
+from decimal import Decimal
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.db import get_session
 from app.deps import get_current_supplier, get_current_user, require_buyer_or_admin
 from app.models.inquiry import Inquiry, InquiryInvite, InquiryItem, InquiryStatus, QuoteLine
+from app.models.quote import QuoteAttachment, QuoteRow
 from app.models.supplier import Supplier, SupplierStatus
 from app.models.user import User
 from app.schemas.inquiry import (
+    AdminAttachment,
+    AdminQuoteRow,
     InquiryAwardRequest,
     InquiryCreate,
     InquiryDetail,
     InquiryItemRead,
     InquiryListResponse,
     InquiryRead,
+    InquirySupplierQuotesResponse,
     InviteRead,
     MyInquiryDetail,
     MyInquiryItem,
     MyQuoteSubmit,
     QuoteLineRead,
     SupplierMini,
+    SupplierQuoteDetail,
 )
+
+UPLOAD_ROOT = Path(os.environ.get("SRM_UPLOAD_ROOT", "/app/uploads"))
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
 
@@ -251,6 +262,90 @@ def award_inquiry(
     session.add(inquiry)
     session.commit()
     return _load_detail(inquiry_id, session)
+
+
+@router.get("/{inquiry_id}/supplier-quotes", response_model=InquirySupplierQuotesResponse)
+def get_supplier_quotes(
+    inquiry_id: int,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_user),
+) -> InquirySupplierQuotesResponse:
+    """采购员看每家供应商的完整报价(rows+attachments),方式4混合视图"""
+    inquiry = session.get(Inquiry, inquiry_id)
+    if not inquiry:
+        raise HTTPException(404, "询价单不存在")
+
+    invites = session.exec(
+        select(InquiryInvite).where(InquiryInvite.inquiry_id == inquiry_id)
+    ).all()
+    suppliers_by_id = {
+        s.id: s for s in session.exec(
+            select(Supplier).where(Supplier.id.in_([i.supplier_id for i in invites]))
+        ).all()
+    } if invites else {}
+
+    result = []
+    for inv in invites:
+        sup = suppliers_by_id.get(inv.supplier_id)
+        if not sup:
+            continue
+        rows = session.exec(
+            select(QuoteRow)
+            .where(QuoteRow.inquiry_id == inquiry_id, QuoteRow.supplier_id == sup.id)
+            .order_by(QuoteRow.sort_order, QuoteRow.id)
+        ).all()
+        atts = session.exec(
+            select(QuoteAttachment)
+            .where(QuoteAttachment.inquiry_id == inquiry_id, QuoteAttachment.supplier_id == sup.id)
+            .order_by(QuoteAttachment.uploaded_at)
+        ).all()
+        total = Decimal("0")
+        for r in rows:
+            if r.qty is not None:
+                total += r.qty * r.unit_price
+            else:
+                total += r.unit_price
+        result.append(SupplierQuoteDetail(
+            supplier_id=sup.id,
+            supplier_code=sup.code,
+            company_name=sup.company_name,
+            contact_phone=sup.contact_phone,
+            quoted_at=inv.quoted_at,
+            rows=[AdminQuoteRow.model_validate(r) for r in rows],
+            attachments=[AdminAttachment.model_validate(a) for a in atts],
+            total_amount=total,
+            row_count=len(rows),
+        ))
+
+    # 按已报价+总金额排序
+    result.sort(key=lambda x: (x.quoted_at is None, x.total_amount))
+
+    return InquirySupplierQuotesResponse(
+        inquiry_id=inquiry.id,
+        inquiry_code=inquiry.code,
+        suppliers=result,
+    )
+
+
+@router.get("/{inquiry_id}/attachment/{attachment_id}/download")
+def admin_download_attachment(
+    inquiry_id: int,
+    attachment_id: int,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_user),
+):
+    """采购员下载供应商上传的附件"""
+    att = session.get(QuoteAttachment, attachment_id)
+    if not att or att.inquiry_id != inquiry_id:
+        raise HTTPException(404, "附件不存在")
+    disk_path = UPLOAD_ROOT / att.storage_path
+    if not disk_path.exists():
+        raise HTTPException(404, "文件已丢失")
+    return FileResponse(
+        path=str(disk_path),
+        filename=att.filename,
+        media_type=att.mime_type,
+    )
 
 
 @router.delete("/{inquiry_id}", status_code=status.HTTP_204_NO_CONTENT)

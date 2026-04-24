@@ -28,6 +28,9 @@ services:
       - redis
     ports:
       - "8000:8000"
+    volumes:
+      - srm_uploads:/app/uploads  # 供应商上传的报价附件
 
 volumes:
   pg_data:
+  srm_uploads:

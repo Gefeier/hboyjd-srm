@@ -242,7 +242,7 @@ body { background: var(--gray-50); }
         <div class="modal-head">
             <div>
                 <h3>新建询价单</h3>
-                <p>填写物料清单、勾选供应商,系统会自动生成编号并邀请供应商填报价格。</p>
+                <p>写清标题 + 勾选供应商即可。物料清单可留空由供应商自报,也可先列好让他们对应填价。</p>
             </div>
             <button class="modal-close" id="closeModalBtn">&times;</button>
         </div>
@@ -277,7 +277,7 @@ body { background: var(--gray-50); }
 
                 <!-- 物料清单 -->
                 <div class="form-section">
-                    <h5>物料清单 <span class="hint">至少添加一行</span></h5>
+                    <h5>物料清单 <span class="hint">可选 · 留空则由供应商自行列报价明细</span></h5>
                     <div class="item-row-head">
                         <div>物料名称 *</div>
                         <div>规格/型号</div>
@@ -463,7 +463,6 @@ body { background: var(--gray-50); }
     addRowBtn.addEventListener("click", addRow);
     itemRows.addEventListener("click", (e) => {
         if (e.target.closest("[data-del]")) {
-            if (itemRows.children.length <= 1) { alert("至少保留一行"); return; }
             e.target.closest(".item-row").remove();
         }
     });
@@ -514,8 +513,7 @@ body { background: var(--gray-50); }
         // reset
         document.getElementById("createForm").reset();
         itemRows.innerHTML = "";
-        addRow();
-        addRow(); // 默认2行
+        // 默认不加行 — 留空让采购员按需添加或完全不填
         selectedIds.clear();
         selectedCount.textContent = "已选 0 家";
         document.getElementById("formError").hidden = true;
@@ -550,7 +548,7 @@ body { background: var(--gray-50); }
                 remark: row.querySelector('[name=remark]').value.trim() || null,
             });
         }
-        if (!items.length) { errEl.textContent = "请至少添加一行物料"; errEl.hidden = false; return; }
+        // items 可选:留空则供应商自由报价
         if (!selectedIds.size) { errEl.textContent = "请至少勾选一家供应商"; errEl.hidden = false; return; }
 
         const payload = {

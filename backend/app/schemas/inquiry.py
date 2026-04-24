@@ -21,15 +21,9 @@ class InquiryCreate(BaseModel):
     remark: str | None = Field(default=None, max_length=2000)
     delivery_date: str | None = Field(default=None, max_length=32)
     delivery_address: str | None = Field(default=None, max_length=256)
-    items: list[InquiryItemCreate] = Field(min_length=1)  # 至少一行物料
-    supplier_ids: list[int] = Field(min_length=1)  # 至少邀请1家
-
-    @field_validator("items")
-    @classmethod
-    def non_empty_items(cls, v):
-        if not v:
-            raise ValueError("至少添加一行物料")
-        return v
+    # items 可选 — 方式4混合型:采购员可不列,让供应商自己报
+    items: list[InquiryItemCreate] = Field(default_factory=list)
+    supplier_ids: list[int] = Field(min_length=1)
 
 
 class InquiryItemRead(BaseModel):
@@ -113,6 +107,51 @@ class InquiryAwardRequest(BaseModel):
     note: str | None = None
 
 
+# ============== 采购员端:看每家的报价详情(方式4) ==============
+
+class AdminQuoteRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    spec: str | None = None
+    unit: str
+    qty: Decimal | None = None
+    unit_price: Decimal
+    note: str | None = None
+    source: str
+    sort_order: int = 0
+
+
+class AdminAttachment(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    filename: str
+    file_size: int
+    mime_type: str
+    parse_status: str
+    parse_note: str | None = None
+    uploaded_at: datetime
+
+
+class SupplierQuoteDetail(BaseModel):
+    """采购员视角:一家供应商针对此询价单的完整报价(含附件+自填行+预设报价)"""
+    supplier_id: int
+    supplier_code: str
+    company_name: str
+    contact_phone: str | None = None
+    quoted_at: datetime | None = None
+    rows: list[AdminQuoteRow] = []
+    attachments: list[AdminAttachment] = []
+    total_amount: Decimal = Decimal("0")  # 有qty的行:qty×price;无qty的行:只累加unit_price一次
+    row_count: int = 0
+
+
+class InquirySupplierQuotesResponse(BaseModel):
+    inquiry_id: int
+    inquiry_code: str
+    suppliers: list[SupplierQuoteDetail] = []
+
+
 # ============== 供应商端:填报价 ==============
 
 class MyInquiryItem(BaseModel):
@@ -154,9 +193,10 @@ class MyQuoteSubmit(BaseModel):
     lines: list[MyQuoteLineSubmit] = Field(min_length=1)
 
 
-# ============== 公开 magic link 填报(免登录) ==============
+# ============== 公开 magic link 填报(免登录) — 方式4混合模型 ==============
 
 class PublicInquiryItem(BaseModel):
+    """方式1兼容:采购员预设的物料(供应商填价)。通常为空。"""
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
@@ -169,6 +209,31 @@ class PublicInquiryItem(BaseModel):
     my_note: str | None = None
 
 
+class PublicQuoteRow(BaseModel):
+    """供应商自己列的一行报价(名称/规格/单位/数量/单价/备注)"""
+    model_config = ConfigDict(from_attributes=True)
+    id: int | None = None  # 提交新行 null,更新带 id
+    name: str = Field(min_length=1, max_length=128)
+    spec: str | None = Field(default=None, max_length=256)
+    unit: str = Field(default="个", max_length=16)
+    qty: Decimal | None = None
+    unit_price: Decimal = Field(ge=0)
+    note: str | None = Field(default=None, max_length=256)
+    source: str = "manual"
+    sort_order: int = 0
+
+
+class PublicAttachmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    filename: str
+    file_size: int
+    mime_type: str
+    parse_status: str
+    parse_note: str | None = None
+    uploaded_at: datetime
+
+
 class PublicQuoteView(BaseModel):
     """供应商通过 magic link 看到的视图 — 不含任何其他供应商的信息"""
     model_config = ConfigDict(from_attributes=True)
@@ -176,20 +241,24 @@ class PublicQuoteView(BaseModel):
     title: str
     remark: str | None = None
     delivery_date: str | None = None
-    delivery_address: str | None = None
-    buyer_company_name: str = "湖北欧阳聚德汽车有限公司"  # 固定
-    supplier_company_name: str  # 该家自己
+    buyer_company_name: str = "湖北欧阳聚德汽车有限公司"
+    supplier_company_name: str
     status: InquiryStatus
     created_at: datetime
     quoted_at: datetime | None = None
-    items: list[PublicInquiryItem] = []
+    preset_items: list[PublicInquiryItem] = []  # 方式1兼容
+    rows: list[PublicQuoteRow] = []             # 方式4主数据
+    attachments: list[PublicAttachmentRead] = []
 
 
-class PublicQuoteLineSubmit(BaseModel):
+class PublicPresetQuote(BaseModel):
+    """方式1兼容:针对采购员预设的 InquiryItem 填单价"""
     item_id: int
     unit_price: Decimal = Field(ge=0)
     note: str | None = Field(default=None, max_length=256)
 
 
 class PublicQuoteSubmit(BaseModel):
-    lines: list[PublicQuoteLineSubmit] = Field(min_length=1)
+    """提交报价 — 覆盖式,传什么就是什么"""
+    rows: list[PublicQuoteRow] = Field(default_factory=list)
+    preset_quotes: list[PublicPresetQuote] = Field(default_factory=list)

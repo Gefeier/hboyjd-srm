@@ -12,23 +12,19 @@ body {
     font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
 }
 
-.wrap { max-width: 900px; margin: 0 auto; padding: 48px 24px 80px; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 44px 24px 80px; }
 
 /* ===== 企业抬头 ===== */
 .letterhead {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+    display: flex; align-items: center; gap: 16px;
     padding: 0 0 22px;
     border-bottom: 2px solid var(--navy-900);
     margin-bottom: 36px;
 }
 .letterhead .brand img { height: 54px; display: block; }
 .letterhead .meta-line { flex: 1; text-align: right; font-size: 12.5px; color: var(--gray-500); line-height: 1.8; }
-.letterhead .meta-line .doc-code { font-family: ui-monospace, 'SFMono-Regular', monospace; color: var(--navy-900); font-size: 13px; font-weight: 500; }
-.letterhead .meta-line .doc-date { color: var(--gray-500); }
+.letterhead .doc-code { font-family: ui-monospace, monospace; color: var(--navy-900); font-size: 13px; font-weight: 500; }
 
-/* ===== 主标题 ===== */
 .doc-title {
     text-align: center;
     font-size: 26px;
@@ -38,172 +34,211 @@ body {
     margin-bottom: 28px;
 }
 
-/* ===== 称谓 ===== */
 .salutation { font-size: 15px; color: var(--navy-900); margin-bottom: 14px; font-weight: 500; }
 .salutation b { color: var(--blue-700); }
 .intro {
-    font-size: 14px;
-    color: var(--gray-700);
-    line-height: 1.9;
-    text-indent: 2em;
-    margin-bottom: 26px;
+    font-size: 14px; color: var(--gray-700); line-height: 1.9;
+    text-indent: 2em; margin-bottom: 22px;
 }
 
-/* ===== 要求信息 ===== */
-.req-box { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 16px 22px; margin-bottom: 20px; }
-.req-box .row { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 13.5px; line-height: 1.8; }
-.req-box .lbl { color: var(--gray-500); min-width: 86px; }
-.req-box .val { color: var(--navy-900); }
-.req-box .remark { grid-column: 1/-1; padding-top: 10px; margin-top: 4px; border-top: 1px dashed var(--gray-100); color: var(--gray-700); line-height: 1.8; }
+/* ===== 需求说明卡 ===== */
+.req-box {
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius); padding: 14px 22px; margin-bottom: 22px;
+    font-size: 13.5px; color: var(--gray-700); line-height: 1.8;
+}
+.req-box .row { display: flex; gap: 18px; flex-wrap: wrap; }
+.req-box .lbl { color: var(--gray-500); }
+.req-box .val { color: var(--navy-900); font-weight: 500; }
+.req-box .remark {
+    padding-top: 10px; margin-top: 8px;
+    border-top: 1px dashed var(--gray-100);
+    color: var(--gray-700);
+}
 
-/* ===== 报价表 ===== */
-.quote-card { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
-.quote-card h3 { padding: 16px 22px; font-size: 15px; font-weight: 600; color: var(--navy-900); border-bottom: 1px solid var(--gray-100); background: var(--gray-50); margin: 0; }
-.quote-card h3 .hint { font-size: 12px; color: var(--gray-500); font-weight: 400; margin-left: 10px; }
+/* ===== section 卡片 ===== */
+.section-card {
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius); overflow: hidden; margin-bottom: 18px;
+}
+.section-card h3 {
+    padding: 15px 22px; font-size: 15px; font-weight: 600;
+    color: var(--navy-900); background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-100); margin: 0;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.section-card h3 .hint {
+    font-size: 12px; color: var(--gray-500); font-weight: 400;
+}
+.section-card h3 .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; background: var(--blue-600); color: #fff;
+    border-radius: 50%; font-size: 12px; font-weight: 600; margin-right: 10px;
+}
 
-table { width: 100%; border-collapse: collapse; }
-thead th { background: var(--gray-50); font-size: 12px; font-weight: 500; color: var(--gray-600); text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--gray-100); }
-tbody td { padding: 14px 16px; border-bottom: 1px solid var(--gray-100); font-size: 13.5px; color: var(--gray-700); vertical-align: top; }
-tbody tr:last-child td { border-bottom: none; }
-.idx { color: var(--gray-400); font-variant-numeric: tabular-nums; width: 36px; }
-.name { color: var(--navy-900); font-weight: 500; }
-.spec { color: var(--gray-500); font-size: 11.5px; margin-top: 3px; line-height: 1.5; }
-.qty { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--navy-900); white-space: nowrap; }
-.qty .unit { color: var(--gray-400); font-weight: 400; font-size: 11.5px; margin-left: 2px; }
-.price-in { width: 130px; padding: 9px 10px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 14px; font-family: ui-monospace, monospace; text-align: right; }
-.price-in:focus { outline: none; border-color: var(--blue-500); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
-.price-in:disabled { background: var(--gray-50); color: var(--gray-500); }
-.note-in { width: 100%; min-width: 150px; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 12.5px; font-family: inherit; }
-.note-in:focus { outline: none; border-color: var(--blue-500); }
-.subtotal { color: var(--navy-900); font-variant-numeric: tabular-nums; font-weight: 500; text-align: right; white-space: nowrap; }
-.subtotal.empty { color: var(--gray-300); font-weight: 400; }
+/* ===== 上传区 ===== */
+.upload-zone {
+    margin: 20px 22px; padding: 32px 20px;
+    border: 2px dashed var(--gray-200); border-radius: var(--radius);
+    text-align: center; cursor: pointer;
+    background: var(--gray-50);
+    transition: all 0.2s;
+}
+.upload-zone:hover, .upload-zone.drag {
+    border-color: var(--blue-500); background: var(--blue-50);
+}
+.upload-zone .ic {
+    width: 52px; height: 52px; margin: 0 auto 10px;
+    color: var(--blue-500);
+}
+.upload-zone .ic svg { width: 100%; height: 100%; }
+.upload-zone .title-line { font-size: 14.5px; color: var(--navy-900); font-weight: 500; margin-bottom: 5px; }
+.upload-zone .sub-line { font-size: 12.5px; color: var(--gray-500); }
+.upload-zone input[type="file"] { display: none; }
 
-/* 合计条 */
+.attach-list { padding: 0 22px 18px; }
+.attach-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; background: var(--blue-50);
+    border: 1px solid var(--blue-100); border-radius: var(--radius-sm);
+    margin-bottom: 8px; font-size: 13px;
+}
+.attach-item .fname { flex: 1; color: var(--navy-900); font-weight: 500; word-break: break-all; }
+.attach-item .fmeta { color: var(--gray-500); font-size: 11.5px; }
+.attach-item .del-btn {
+    padding: 5px 10px; background: transparent; color: var(--gray-500);
+    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.attach-item .del-btn:hover { border-color: var(--danger-500); color: var(--danger-500); }
+.attach-item .parse-tag {
+    padding: 2px 8px; font-size: 11px; border-radius: var(--radius-pill);
+    background: var(--gray-100); color: var(--gray-600);
+}
+.attach-item .parse-tag.done { background: var(--ok-50); color: var(--ok-500); }
+.attach-item .parse-tag.parsing { background: var(--warn-50); color: var(--warn-500); }
+.attach-item .parse-tag.skipped { background: var(--gray-100); color: var(--gray-500); }
+
+/* ===== 动态报价表 ===== */
+.rows-wrap { padding: 6px 22px 14px; }
+.row-head, .row-body {
+    display: grid;
+    grid-template-columns: 2.2fr 2fr 0.8fr 1fr 1.5fr 2fr auto;
+    gap: 8px;
+    align-items: center;
+}
+.row-head { padding: 8px 0; font-size: 11px; color: var(--gray-500); border-bottom: 1px solid var(--gray-100); }
+.row-head > div { padding: 0 2px; }
+.row-body { margin-top: 8px; }
+.row-body input {
+    padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    font-size: 13px; font-family: inherit; width: 100%;
+}
+.row-body input:focus { outline: none; border-color: var(--blue-500); }
+.row-body input[type="number"] { font-family: ui-monospace, monospace; text-align: right; }
+.row-body .del {
+    background: transparent; border: 1px solid var(--gray-200); color: var(--gray-400);
+    width: 32px; height: 32px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px;
+}
+.row-body .del:hover { border-color: var(--danger-500); color: var(--danger-500); }
+.row-body .subtotal-preview {
+    font-size: 11px; color: var(--gray-400); text-align: right; padding-right: 6px;
+}
+
+.add-row-btn {
+    margin: 10px 22px 18px; width: calc(100% - 44px);
+    padding: 10px; background: var(--blue-50); color: var(--blue-700);
+    border: 1px dashed var(--blue-200); border-radius: var(--radius-sm);
+    font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.add-row-btn:hover { background: var(--blue-100); }
+
+/* ===== 预设物料表(方式1兼容,通常空) ===== */
+.preset-table { width: 100%; border-collapse: collapse; }
+.preset-table th { background: var(--gray-50); padding: 10px 14px; border-bottom: 1px solid var(--gray-100); font-size: 11.5px; color: var(--gray-600); font-weight: 500; text-align: left; }
+.preset-table td { padding: 12px 14px; border-bottom: 1px solid var(--gray-100); font-size: 13px; vertical-align: middle; }
+.preset-table tr:last-child td { border-bottom: none; }
+.preset-table .pname { color: var(--navy-900); font-weight: 500; }
+.preset-table .pspec { color: var(--gray-500); font-size: 11.5px; margin-top: 2px; }
+.preset-table .pqty { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500; }
+.preset-table .pqty .unit { color: var(--gray-400); font-size: 11.5px; font-weight: 400; }
+.preset-table input.p-price, .row-body input[name=unit_price] {
+    width: 110px; padding: 7px 10px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    font-size: 13px; font-family: ui-monospace, monospace; text-align: right;
+}
+
+/* ===== 底部合计 + 提交 ===== */
 .total-bar {
     padding: 18px 22px;
     background: linear-gradient(to right, var(--blue-50), var(--white));
     border-top: 1px solid var(--gray-100);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;
 }
-.total-bar .lbl { font-size: 14px; color: var(--gray-600); }
-.total-bar .val { font-size: 24px; color: var(--navy-900); font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 10px; }
+.total-bar .lbl { font-size: 13.5px; color: var(--gray-600); }
+.total-bar .val { font-size: 22px; color: var(--navy-900); font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 8px; }
+.total-bar .hint2 { font-size: 11.5px; color: var(--gray-500); margin-top: 3px; }
 
-/* 提交区 */
-.submit-row {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 18px;
-}
-.btn {
-    padding: 12px 32px;
-    border-radius: var(--radius-sm);
-    font-size: 14.5px;
-    font-weight: 500;
-    cursor: pointer;
-    font-family: inherit;
-    border: 1px solid transparent;
-    transition: all 0.18s;
-}
+.btn { padding: 11px 28px; border-radius: var(--radius-sm); font-size: 14.5px; font-weight: 500;
+    cursor: pointer; font-family: inherit; border: 1px solid transparent; transition: all 0.18s; }
 .btn-primary { background: var(--blue-600); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--blue-700); box-shadow: var(--shadow-blue); }
 .btn-primary:disabled { background: var(--gray-300); cursor: not-allowed; }
 
-/* 联系方式/签章 */
 .sign-block {
-    margin-top: 36px;
-    padding-top: 22px;
-    border-top: 1px solid var(--gray-100);
-    text-align: right;
-    font-size: 13px;
-    color: var(--gray-600);
-    line-height: 1.9;
+    margin-top: 36px; padding-top: 22px; border-top: 1px solid var(--gray-100);
+    text-align: right; font-size: 13px; color: var(--gray-600); line-height: 1.9;
 }
-.sign-block b { color: var(--navy-900); font-weight: 500; }
 .sign-block .company-line { font-size: 14.5px; color: var(--navy-900); font-weight: 600; margin-bottom: 2px; }
 
-/* 消息提示 */
-.msg-box {
-    margin-bottom: 20px;
-    padding: 14px 18px;
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    line-height: 1.6;
-}
+.msg-box { margin-bottom: 18px; padding: 12px 18px; border-radius: var(--radius-sm); font-size: 14px; line-height: 1.6; }
 .msg-box.ok { background: var(--ok-50); color: #065f46; border: 1px solid #6ee7b7; }
 .msg-box.err { background: var(--danger-50); color: #991b1b; border: 1px solid #fecaca; }
 .msg-box.info { background: var(--warn-50); color: #92400e; border: 1px solid #fde68a; }
 
-/* 已提交标记 */
-.quoted-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 14px;
-    background: var(--ok-50);
-    color: #065f46;
-    border: 1px solid #6ee7b7;
-    border-radius: var(--radius-pill);
-    font-size: 12.5px;
-    margin-left: 12px;
+.quoted-badge, .closed-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: var(--radius-pill); font-size: 12.5px;
 }
-.closed-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 14px;
-    background: var(--gray-100);
-    color: var(--gray-600);
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius-pill);
-    font-size: 12.5px;
-    margin-left: 12px;
-}
+.quoted-badge { background: var(--ok-50); color: #065f46; border: 1px solid #6ee7b7; }
+.closed-badge { background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); }
 
-/* 404 / 错误状态 */
 .fatal-state {
-    background: #fff;
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius);
-    padding: 80px 40px;
-    text-align: center;
+    background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius);
+    padding: 80px 40px; text-align: center;
 }
 .fatal-state .big-icon {
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    background: var(--gray-100);
-    color: var(--gray-400);
-    display: inline-flex;
-    align-items: center; justify-content: center;
-    margin-bottom: 20px;
+    width: 72px; height: 72px; border-radius: 50%;
+    background: var(--gray-100); color: var(--gray-400);
+    display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;
 }
 .fatal-state h2 { font-size: 18px; color: var(--navy-900); font-weight: 600; margin-bottom: 8px; }
 .fatal-state p { font-size: 14px; color: var(--gray-500); line-height: 1.8; }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
     .wrap { padding: 24px 14px 60px; }
     .doc-title { font-size: 20px; letter-spacing: 2px; }
     .letterhead { flex-direction: column; align-items: flex-start; gap: 10px; }
     .letterhead .meta-line { text-align: left; }
-    .price-in { width: 100px; }
-    .submit-row { flex-direction: column; }
-    .btn { width: 100%; }
+    .row-head { display: none; }
+    .row-body {
+        grid-template-columns: 1fr 1fr; gap: 6px;
+        padding: 12px; background: var(--gray-50); border-radius: var(--radius-sm); margin-bottom: 10px;
+    }
+    .row-body input { font-size: 13px; }
+    .row-body .del { justify-self: end; grid-column: 2; }
 }
 </style>
 </head>
 <body>
 
 <div class="wrap">
-    <!-- 抬头 -->
     <div class="letterhead">
         <div class="brand">
             <img src="assets/logo.png" alt="湖北欧阳聚德汽车" onerror="this.style.display='none'">
         </div>
         <div class="meta-line">
             <div class="doc-code" id="docCode">—</div>
-            <div class="doc-date" id="docDate">—</div>
+            <div id="docDate">—</div>
         </div>
     </div>
 
@@ -227,20 +262,21 @@ tbody tr:last-child td { border-bottom: none; }
     const fmtMoney = (n) => Number(n).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const fmtDate = (iso) => iso ? iso.slice(0, 10) : "—";
     const fmtDateTime = (iso) => iso ? iso.slice(0, 16).replace("T", " ") : "—";
+    const fmtSize = (n) => n < 1024 ? n + " B" : n < 1024*1024 ? (n/1024).toFixed(1) + " KB" : (n/1024/1024).toFixed(2) + " MB";
+
+    let viewData = null;
 
     async function load() {
         if (!token || token.length < 16) {
-            fatal("链接无效", "您访问的询价回函链接不正确或已失效,请联系对接人重新获取。");
+            fatal("链接无效", "您访问的询价回函链接不正确或已失效。");
             return;
         }
         try {
             const res = await fetch("/api/v1/public/quote/" + encodeURIComponent(token));
             const d = await res.json();
-            if (res.status === 404) {
-                fatal("链接无效或已过期", "您访问的询价回函链接已失效,请联系对接人重新获取。");
-                return;
-            }
+            if (res.status === 404) return fatal("链接无效或已过期", "请联系对接人重新获取。");
             if (!res.ok) throw new Error(d.detail || "加载失败");
+            viewData = d;
             render(d);
         } catch (err) {
             fatal("加载失败", esc(err.message || "网络异常,请刷新重试"));
@@ -270,71 +306,120 @@ tbody tr:last-child td { border-bottom: none; }
 
         let statusLine = "";
         if (isClosed) {
-            statusLine = `<span class="closed-badge">本询价单已截止,报价不可再修改</span>`;
+            statusLine = `<div style="text-align:center;margin-bottom:20px"><span class="closed-badge">本询价单已截止,报价不可再修改</span></div>`;
         } else if (hasQuoted) {
-            statusLine = `<span class="quoted-badge">您已于 ${fmtDateTime(d.quoted_at)} 提交过报价(本页可再次修改)</span>`;
+            statusLine = `<div style="text-align:center;margin-bottom:20px"><span class="quoted-badge">您已于 ${fmtDateTime(d.quoted_at)} 提交过报价 · 仍可在本页继续修改</span></div>`;
         }
 
-        // 物料行
-        const itemRows = d.items.map((it, idx) => {
-            const v = it.my_unit_price != null ? it.my_unit_price : "";
+        // 采购员预设物料(通常为空)
+        let presetSection = "";
+        if (d.preset_items && d.preset_items.length > 0) {
+            const rows = d.preset_items.map((it, idx) => {
+                const v = it.my_unit_price != null ? it.my_unit_price : "";
+                return `
+                    <tr data-preset data-item-id="${it.id}" data-qty="${it.qty}">
+                        <td style="width:30px;color:var(--gray-400)">${idx+1}</td>
+                        <td>
+                            <div class="pname">${esc(it.name)}</div>
+                            ${it.spec ? `<div class="pspec">${esc(it.spec)}</div>` : ""}
+                        </td>
+                        <td class="pqty">${Number(it.qty)}<span class="unit">${esc(it.unit)}</span></td>
+                        <td><input type="number" class="p-price" data-p-price min="0" step="0.0001" value="${v}" placeholder="0.00" ${isClosed ? "disabled" : ""}></td>
+                        <td><input type="text" class="p-price" data-p-note value="${esc(it.my_note || "")}" placeholder="备注" style="width:100%;font-family:inherit;text-align:left" ${isClosed ? "disabled" : ""}></td>
+                    </tr>
+                `;
+            }).join("");
+            presetSection = `
+              <div class="section-card">
+                <h3><span><span class="step-num">·</span>采购方指定物料 </h3><span class="hint">请在下方填写对应单价</span></h3>
+                <table class="preset-table">
+                    <thead>
+                        <tr><th>#</th><th>物料/规格</th><th>数量</th><th>您的单价(元)</th><th>备注</th></tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+              </div>
+            `;
+        }
+
+        // 附件列表
+        const attachmentsHtml = (d.attachments || []).map(a => {
+            let tagCls = "parse-tag", tagTxt = "未解析";
+            if (a.parse_status === "done") { tagCls += " done"; tagTxt = "已识别"; }
+            else if (a.parse_status === "parsing") { tagCls += " parsing"; tagTxt = "识别中..."; }
+            else if (a.parse_status === "skipped") { tagCls += " skipped"; tagTxt = "手动填写"; }
+            else if (a.parse_status === "failed") { tagCls = "parse-tag"; tagTxt = "解析失败"; }
             return `
-                <tr data-row data-item-id="${it.id}" data-qty="${it.qty}">
-                    <td class="idx">${idx + 1}</td>
-                    <td>
-                        <div class="name">${esc(it.name)}</div>
-                        ${it.spec ? `<div class="spec">${esc(it.spec)}</div>` : ""}
-                        ${it.remark ? `<div class="spec" style="color:var(--gray-400)">补充:${esc(it.remark)}</div>` : ""}
-                    </td>
-                    <td class="qty">${Number(it.qty)}<span class="unit">${esc(it.unit)}</span></td>
-                    <td><input type="number" class="price-in" data-price min="0" step="0.0001" value="${v}" placeholder="0.00" ${isClosed ? "disabled" : ""}></td>
-                    <td><input type="text" class="note-in" data-note value="${esc(it.my_note || "")}" placeholder="含税/运费等备注" ${isClosed ? "disabled" : ""}></td>
-                    <td class="subtotal empty" data-subtotal>—</td>
-                </tr>
+                <div class="attach-item" data-attach="${a.id}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--blue-600);flex-shrink:0"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <div class="fname">${esc(a.filename)}<div class="fmeta">${fmtSize(a.file_size)} · 上传于 ${fmtDateTime(a.uploaded_at)}</div></div>
+                    <span class="${tagCls}">${tagTxt}</span>
+                    ${isClosed ? "" : `<button class="del-btn" data-del-attach="${a.id}">删除</button>`}
+                </div>
             `;
         }).join("");
+
+        // 动态报价行
+        const rowsHtml = (d.rows && d.rows.length > 0)
+            ? d.rows.map(r => rowTpl(r, isClosed)).join("")
+            : (isClosed ? "" : rowTpl({}, false) + rowTpl({}, false));
 
         const html = `
           <div class="doc-title">询 价 单</div>
 
-          ${statusLine ? `<div style="text-align:center;margin-bottom:22px">${statusLine}</div>` : ""}
+          ${statusLine}
 
           <div class="salutation"><b>${esc(d.supplier_company_name)}</b>:</div>
           <div class="intro">
-              您好!我司(湖北欧阳聚德汽车有限公司)因生产需要,拟采购以下物料,
-              烦请贵司根据实际情况填写单价后,点击页面底部「提交报价」按钮。
-              如有疑问请联系对接采购员。
+              您好!我司(湖北欧阳聚德汽车有限公司)${d.title ? "因「" + esc(d.title) + "」" : "因生产需要"},
+              现请贵司提供产品报价。您可在下方上传报价单(PDF/Excel/图片) ,
+              也可直接在「报价明细」栏手动填写。系统会识别附件内容自动填入表格,请核对无误后提交。
           </div>
 
           <div class="req-box">
               <div class="row">
-                  <span class="lbl">要求交期</span>
-                  <span class="val">${esc(d.delivery_date || "按合同另议")}</span>
-                  <span class="lbl">交货地址</span>
-                  <span class="val">${esc(d.delivery_address || "湖北十堰欧阳聚德厂区")}</span>
+                  ${d.delivery_date ? `<div><span class="lbl">要求交期:</span> <span class="val">${esc(d.delivery_date)}</span></div>` : ""}
                   ${d.remark ? `<div class="remark"><b>需求说明:</b>${esc(d.remark)}</div>` : ""}
+                  ${!d.delivery_date && !d.remark ? `<div style="color:var(--gray-500)">欢迎提供贵司可供产品及报价。</div>` : ""}
               </div>
           </div>
 
-          <div class="quote-card">
-              <h3>询价明细<span class="hint">${d.items.length} 项物料${isClosed ? "" : " · 请填写单价"}</span></h3>
-              <table>
-                  <thead>
-                      <tr>
-                          <th style="width:40px">#</th>
-                          <th>物料 / 规格</th>
-                          <th style="width:100px">数量</th>
-                          <th style="width:160px">您的单价(元)</th>
-                          <th>备注</th>
-                          <th style="width:130px;text-align:right">小计</th>
-                      </tr>
-                  </thead>
-                  <tbody>${itemRows}</tbody>
-              </table>
+          ${presetSection}
+
+          <!-- 上传区 -->
+          <div class="section-card">
+              <h3><span><span class="step-num">1</span>上传报价单</span><span class="hint">推荐 · 系统自动识别明细</span></h3>
+              <label class="upload-zone" id="uploadZone" ${isClosed ? 'style="cursor:not-allowed;opacity:0.5"' : ""}>
+                  <div class="ic">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  </div>
+                  <div class="title-line">${isClosed ? "询价单已截止" : "点击或拖拽文件到此处"}</div>
+                  <div class="sub-line">支持 PDF / Excel / Word / 图片(JPG/PNG) · 单个文件最大 10 MB</div>
+                  <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls,.docx,.doc,.jpg,.jpeg,.png,.webp,.csv" ${isClosed ? "disabled" : ""}>
+              </label>
+              <div class="attach-list" id="attachList">${attachmentsHtml}</div>
+          </div>
+
+          <!-- 手填报价行 -->
+          <div class="section-card">
+              <h3><span><span class="step-num">2</span>报价明细</span><span class="hint">${isClosed ? "历史数据" : "可手动添加/修改 · 小计自动计算"}</span></h3>
+              <div class="rows-wrap">
+                  <div class="row-head">
+                      <div>产品名称 *</div>
+                      <div>规格/型号</div>
+                      <div>单位</div>
+                      <div>数量</div>
+                      <div>单价(元)*</div>
+                      <div>备注</div>
+                      <div></div>
+                  </div>
+                  <div id="rowsBox">${rowsHtml}</div>
+              </div>
+              ${isClosed ? "" : `<button type="button" class="add-row-btn" id="addRowBtn">+ 添加一行</button>`}
               <div class="total-bar">
                   <div>
-                      <span class="lbl">本单合计:</span>
-                      <span class="val">¥ <span id="totalVal">0.00</span></span>
+                      <div><span class="lbl">本单报价合计:</span><span class="val">¥ <span id="totalVal">0.00</span></span></div>
+                      <div class="hint2">明细行(数量×单价)+ 预设物料(采购方数量×单价)</div>
                   </div>
                   ${isClosed ? "" : `<button type="button" class="btn btn-primary" id="submitBtn">${hasQuoted ? "保存修改" : "提交报价"}</button>`}
               </div>
@@ -348,74 +433,208 @@ tbody tr:last-child td { border-bottom: none; }
 
         document.getElementById("content").innerHTML = '<div id="msgSlot"></div>' + html;
 
-        // ===== 自动计算 =====
-        const totalEl = document.getElementById("totalVal");
-        function recalc() {
-            let sum = 0;
-            document.querySelectorAll("[data-row]").forEach(row => {
-                const qty = parseFloat(row.dataset.qty) || 0;
-                const price = parseFloat(row.querySelector("[data-price]").value) || 0;
-                const subEl = row.querySelector("[data-subtotal]");
-                if (price > 0) {
-                    const sub = qty * price;
-                    subEl.textContent = "¥" + fmtMoney(sub);
-                    subEl.classList.remove("empty");
-                    sum += sub;
-                } else {
-                    subEl.textContent = "—";
-                    subEl.classList.add("empty");
-                }
-            });
-            totalEl.textContent = fmtMoney(sum);
+        // ===== 事件绑定 =====
+        if (!isClosed) {
+            bindUploadZone();
+            bindRowEvents();
         }
-        document.querySelectorAll("[data-price]").forEach(inp => inp.addEventListener("input", recalc));
+        bindAttachEvents();
         recalc();
+    }
 
-        // ===== 提交 =====
-        const submitBtn = document.getElementById("submitBtn");
-        if (submitBtn) {
-            submitBtn.addEventListener("click", async () => {
-                const lines = [];
-                for (const row of document.querySelectorAll("[data-row]")) {
-                    const price = parseFloat(row.querySelector("[data-price]").value);
-                    if (!price || price <= 0) continue;
-                    lines.push({
-                        item_id: parseInt(row.dataset.itemId),
-                        unit_price: price,
-                        note: row.querySelector("[data-note]").value.trim() || null,
-                    });
-                }
-                if (!lines.length) {
-                    showMsg("err", "请至少填写一行物料的单价");
+    function rowTpl(r, disabled) {
+        const d = disabled ? "disabled" : "";
+        return `
+            <div class="row-body" data-row>
+                <input name="name" placeholder="产品名" value="${esc(r.name || '')}" ${d}>
+                <input name="spec" placeholder="规格/型号" value="${esc(r.spec || '')}" ${d}>
+                <input name="unit" value="${esc(r.unit || '个')}" ${d}>
+                <input name="qty" type="number" min="0" step="0.01" value="${r.qty != null ? r.qty : ''}" placeholder="可选" ${d}>
+                <input name="unit_price" type="number" min="0" step="0.0001" value="${r.unit_price != null ? r.unit_price : ''}" placeholder="0.00" ${d}>
+                <input name="note" placeholder="备注" value="${esc(r.note || '')}" ${d}>
+                ${disabled ? '' : '<button type="button" class="del" data-del-row>&times;</button>'}
+            </div>
+        `;
+    }
+
+    function bindUploadZone() {
+        const zone = document.getElementById("uploadZone");
+        const input = document.getElementById("fileInput");
+        if (!zone) return;
+        input.addEventListener("change", () => {
+            if (input.files && input.files[0]) uploadFile(input.files[0]);
+            input.value = "";
+        });
+        ;["dragenter","dragover"].forEach(ev => zone.addEventListener(ev, e => {
+            e.preventDefault(); zone.classList.add("drag");
+        }));
+        ;["dragleave","drop"].forEach(ev => zone.addEventListener(ev, e => {
+            e.preventDefault(); zone.classList.remove("drag");
+        }));
+        zone.addEventListener("drop", e => {
+            const file = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (file) uploadFile(file);
+        });
+    }
+
+    async function uploadFile(file) {
+        if (file.size > 10 * 1024 * 1024) {
+            showMsg("err", "文件过大,最大 10 MB");
+            return;
+        }
+        showMsg("info", "正在上传 " + file.name + "...");
+        const fd = new FormData();
+        fd.append("file", file);
+        try {
+            const res = await fetch("/api/v1/public/quote/" + encodeURIComponent(token) + "/attachment", {
+                method: "POST", body: fd,
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.detail || "上传失败");
+            showMsg("ok", "已上传 " + d.filename + ",您可继续上传或在下方「报价明细」中补充");
+            // TODO: 触发解析 — 等 MiniMax key 接入
+            load();  // 重新拉视图刷新附件列表
+        } catch (err) {
+            showMsg("err", "上传失败: " + err.message);
+        }
+    }
+
+    function bindAttachEvents() {
+        document.querySelectorAll("[data-del-attach]").forEach(btn => btn.addEventListener("click", async () => {
+            if (!confirm("确定删除此附件?")) return;
+            const id = btn.dataset.delAttach;
+            try {
+                const res = await fetch("/api/v1/public/quote/" + encodeURIComponent(token) + "/attachment/" + id, { method: "DELETE" });
+                if (!res.ok) throw new Error((await res.json()).detail || "删除失败");
+                load();
+            } catch (err) { showMsg("err", "删除失败: " + err.message); }
+        }));
+    }
+
+    function bindRowEvents() {
+        const box = document.getElementById("rowsBox");
+        box.addEventListener("click", e => {
+            if (e.target.closest("[data-del-row]")) {
+                if (box.querySelectorAll("[data-row]").length <= 1) {
+                    // 允许清空最后一行,但不删
+                    const row = e.target.closest("[data-row]");
+                    row.querySelectorAll("input").forEach(i => { if (i.name !== "unit") i.value = ""; });
+                    recalc();
                     return;
                 }
-                submitBtn.disabled = true;
-                const oldText = submitBtn.textContent;
-                submitBtn.textContent = "提交中...";
-                try {
-                    const res = await fetch("/api/v1/public/quote/" + encodeURIComponent(token), {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ lines }),
-                    });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.detail || "提交失败");
-                    showMsg("ok", `报价已成功提交(共 ${lines.length} 项),感谢您的报价。如需修改,可继续在本页编辑后再次点击提交。`);
-                    setTimeout(load, 1200);
-                } catch (err) {
-                    showMsg("err", err.message);
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = oldText;
-                }
+                e.target.closest("[data-row]").remove();
+                recalc();
+            }
+        });
+        box.addEventListener("input", recalc);
+
+        document.querySelectorAll("[data-p-price]").forEach(i => i.addEventListener("input", recalc));
+
+        const addBtn = document.getElementById("addRowBtn");
+        if (addBtn) addBtn.addEventListener("click", () => {
+            const div = document.createElement("div");
+            div.innerHTML = rowTpl({}, false);
+            box.appendChild(div.firstElementChild);
+        });
+
+        const submit = document.getElementById("submitBtn");
+        if (submit) submit.addEventListener("click", doSubmit);
+    }
+
+    function recalc() {
+        let sum = 0;
+        // preset 物料(方式1)
+        document.querySelectorAll("[data-preset]").forEach(tr => {
+            const qty = parseFloat(tr.dataset.qty) || 0;
+            const price = parseFloat(tr.querySelector("[data-p-price]").value) || 0;
+            if (price > 0 && qty > 0) sum += qty * price;
+        });
+        // rows(方式4)
+        document.querySelectorAll("[data-row]").forEach(row => {
+            const qty = parseFloat(row.querySelector('[name=qty]').value);
+            const price = parseFloat(row.querySelector('[name=unit_price]').value);
+            if (price > 0) {
+                sum += (isNaN(qty) || qty <= 0) ? price : qty * price;
+            }
+        });
+        const totalEl = document.getElementById("totalVal");
+        if (totalEl) totalEl.textContent = fmtMoney(sum);
+    }
+
+    async function doSubmit() {
+        const btn = document.getElementById("submitBtn");
+        if (!btn) return;
+
+        // 收集 rows
+        const rows = [];
+        document.querySelectorAll("[data-row]").forEach((row, idx) => {
+            const name = row.querySelector('[name=name]').value.trim();
+            const price = parseFloat(row.querySelector('[name=unit_price]').value);
+            if (!name) return;
+            if (!price || price <= 0) { throw0(`第 ${idx+1} 行「${name}」单价必须 > 0`); }
+            const qtyRaw = row.querySelector('[name=qty]').value;
+            rows.push({
+                name,
+                spec: row.querySelector('[name=spec]').value.trim() || null,
+                unit: row.querySelector('[name=unit]').value.trim() || "个",
+                qty: qtyRaw ? parseFloat(qtyRaw) : null,
+                unit_price: price,
+                note: row.querySelector('[name=note]').value.trim() || null,
+                source: "manual",
+                sort_order: idx,
             });
+        });
+
+        // 收集 preset quotes (方式1)
+        const presetQuotes = [];
+        document.querySelectorAll("[data-preset]").forEach(tr => {
+            const price = parseFloat(tr.querySelector("[data-p-price]").value);
+            if (!price || price <= 0) return;
+            presetQuotes.push({
+                item_id: parseInt(tr.dataset.itemId),
+                unit_price: price,
+                note: tr.querySelector("[data-p-note]").value.trim() || null,
+            });
+        });
+
+        if (!rows.length && !presetQuotes.length) {
+            // 允许只上传附件不填表,但要有附件
+            if (!viewData.attachments || viewData.attachments.length === 0) {
+                showMsg("err", "请至少填写一行报价、预设物料单价或上传一份报价附件");
+                return;
+            }
         }
+
+        btn.disabled = true;
+        const orig = btn.textContent;
+        btn.textContent = "提交中...";
+        try {
+            const res = await fetch("/api/v1/public/quote/" + encodeURIComponent(token), {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rows, preset_quotes: presetQuotes }),
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.detail || "提交失败");
+            showMsg("ok", `报价已提交,感谢您。如需修改可继续在本页编辑后再次提交。`);
+            setTimeout(load, 900);
+        } catch (err) {
+            showMsg("err", err.message);
+            btn.disabled = false;
+            btn.textContent = orig;
+        }
+    }
+
+    function throw0(msg) {
+        showMsg("err", msg);
+        throw new Error(msg);
     }
 
     function showMsg(kind, text) {
         const slot = document.getElementById("msgSlot");
         if (!slot) return;
         slot.innerHTML = `<div class="msg-box ${kind}">${esc(text)}</div>`;
-        if (kind === "ok") {
+        if (kind === "ok" || kind === "info") {
             slot.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
     }

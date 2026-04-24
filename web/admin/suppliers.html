@@ -1059,7 +1059,7 @@ body { background: var(--gray-50); }
                         <textarea id="miRemark" placeholder="质量要求/付款方式/其他补充..." style="width:100%;min-height:60px;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
                     </div>
                     <div>
-                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:8px">物料清单 <span style="color:#94a3b8;font-size:11px">至少一行</span></label>
+                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:8px">物料清单 <span style="color:#94a3b8;font-size:11px">可选 · 留空则由供应商自由报价</span></label>
                         <div id="miRowHead" style="display:grid;grid-template-columns:2fr 2fr 1fr 1fr 2fr auto;gap:8px;padding-bottom:6px;font-size:11px;color:#94a3b8">
                             <div>物料名称 *</div><div>规格/型号</div><div>单位</div><div>数量 *</div><div>备注</div><div></div>
                         </div>
@@ -1095,11 +1095,10 @@ body { background: var(--gray-50); }
             `;
             rowsEl.appendChild(div);
         }
-        addRow(); addRow();
+        // 默认不加行 — 采购员按需添加
         mask.querySelector("#miAddRow").addEventListener("click", addRow);
         rowsEl.addEventListener("click", (e) => {
             if (e.target.closest("[data-del]")) {
-                if (rowsEl.children.length <= 1) { alert("至少保留一行"); return; }
                 e.target.closest(".mi-row").remove();
             }
         });
@@ -1125,7 +1124,7 @@ body { background: var(--gray-50); }
                     remark: row.querySelector('[name=remark]').value.trim() || null,
                 });
             }
-            if (!items.length) return showErr("请至少添加一行物料");
+            // items 可选:留空则供应商自由报价
 
             const submitBtn = mask.querySelector("#miSubmit");
             submitBtn.disabled = true; submitBtn.textContent = "提交中...";
