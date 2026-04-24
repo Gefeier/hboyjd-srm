@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>询价单管理 · 采购中心 · 欧阳聚德供应商协同平台</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+body { background: var(--gray-50); }
+
+/* ===== Admin 通用布局 ===== */
+.admin-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; padding-top: 72px; }
+.admin-aside { position: fixed; top: 72px; left: 0; bottom: 0; width: 260px; background: var(--white); border-right: 1px solid var(--gray-100); padding: 28px 0; overflow-y: auto; }
+.admin-user { padding: 0 24px 20px; border-bottom: 1px solid var(--gray-100); margin-bottom: 20px; }
+.admin-user .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--blue-600), var(--navy-700)); color: var(--white); display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; margin-right: 10px; float: left; }
+.admin-user .info { padding-left: 50px; }
+.admin-user .name { font-size: 14px; font-weight: 500; color: var(--navy-900); }
+.admin-user .role { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+.aside-group { margin-bottom: 16px; }
+.aside-group h6 { font-size: 11px; color: var(--gray-400); font-weight: 500; padding: 8px 24px; text-transform: uppercase; }
+.aside-nav a { display: flex; align-items: center; gap: 12px; padding: 10px 24px; font-size: 14px; color: var(--gray-700); transition: all 0.15s; border-left: 3px solid transparent; }
+.aside-nav a:hover { background: var(--gray-50); color: var(--navy-900); }
+.aside-nav a.active { background: var(--blue-50); color: var(--blue-700); font-weight: 500; border-left-color: var(--blue-600); }
+.aside-nav a .count { margin-left: auto; background: var(--gray-100); color: var(--gray-600); padding: 1px 8px; border-radius: var(--radius-pill); font-size: 11px; }
+.aside-nav a.active .count { background: var(--blue-600); color: var(--white); }
+.admin-main { grid-column: 2; padding: 32px 40px 80px; }
+
+/* ===== 页面标题 + 操作 ===== */
+.page-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+.page-head h1 { font-size: 22px; font-weight: 600; color: var(--navy-900); margin-bottom: 4px; }
+.page-head .sub { font-size: 13px; color: var(--gray-500); }
+.btn-primary { background: var(--blue-600); color: #fff; padding: 10px 20px; border-radius: var(--radius-sm); border: none; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+.btn-primary:hover { background: var(--blue-700); box-shadow: var(--shadow-blue); }
+.btn-ghost { background: #fff; border: 1px solid var(--gray-200); color: var(--gray-700); padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.btn-ghost:hover { border-color: var(--gray-400); color: var(--navy-900); }
+
+/* ===== 筛选条 ===== */
+.filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.tab-pill { padding: 6px 16px; background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius-pill); font-size: 13px; color: var(--gray-600); cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.tab-pill:hover { border-color: var(--gray-400); }
+.tab-pill.active { background: var(--blue-600); color: #fff; border-color: var(--blue-600); }
+.search-input { flex: 1; min-width: 200px; max-width: 320px; padding: 8px 14px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: #fff; }
+.search-input:focus { outline: none; border-color: var(--blue-500); }
+
+/* ===== 表格 ===== */
+.table-card { background: #fff; border: 1px solid var(--gray-100); border-radius: var(--radius); overflow: hidden; }
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th { text-align: left; font-size: 12px; font-weight: 500; color: var(--gray-500); padding: 14px 18px; border-bottom: 1px solid var(--gray-100); background: var(--gray-50); }
+.tbl td { padding: 16px 18px; border-bottom: 1px solid var(--gray-100); font-size: 13.5px; color: var(--gray-700); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--gray-50); }
+.tbl .code { font-family: ui-monospace, 'SFMono-Regular', monospace; color: var(--navy-700); font-size: 12.5px; }
+.tbl .title-cell { color: var(--navy-900); font-weight: 500; }
+.tbl .title-cell a { color: var(--navy-900); text-decoration: none; }
+.tbl .title-cell a:hover { color: var(--blue-600); text-decoration: underline; }
+.progress-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; background: var(--gray-50); border-radius: var(--radius-pill); font-size: 12px; color: var(--gray-600); font-variant-numeric: tabular-nums; }
+.progress-chip.done { background: var(--ok-50); color: var(--ok-500); }
+.progress-chip.partial { background: var(--warn-50); color: var(--warn-500); }
+
+.status-pill { display: inline-block; padding: 3px 10px; font-size: 12px; border-radius: var(--radius-pill); font-weight: 500; }
+.status-open { background: var(--blue-50); color: var(--blue-700); }
+.status-closed { background: var(--gray-100); color: var(--gray-600); }
+
+.row-actions { display: flex; gap: 6px; }
+.row-actions button, .row-actions a { padding: 5px 12px; font-size: 12px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200); background: #fff; color: var(--gray-700); cursor: pointer; font-family: inherit; text-decoration: none; }
+.row-actions button:hover, .row-actions a:hover { border-color: var(--gray-400); color: var(--navy-900); }
+.row-actions .primary { background: var(--blue-600); color: #fff; border-color: var(--blue-600); }
+.row-actions .primary:hover { background: var(--blue-700); color: #fff; }
+.row-actions .danger:hover { border-color: var(--danger-500); color: var(--danger-500); }
+
+.empty-state { padding: 80px 24px; text-align: center; color: var(--gray-500); }
+.empty-state h4 { color: var(--navy-900); font-size: 15px; margin: 10px 0 6px; font-weight: 500; }
+.empty-state p { font-size: 13px; line-height: 1.7; margin-bottom: 16px; }
+
+.pager { display: flex; justify-content: center; gap: 6px; margin-top: 20px; }
+.pager button { padding: 6px 12px; background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: inherit; min-width: 36px; }
+.pager button.active { background: var(--blue-600); color: #fff; border-color: var(--blue-600); }
+.pager button:disabled { color: var(--gray-300); cursor: not-allowed; }
+
+/* ===== 模态框 ===== */
+.modal-overlay { position: fixed; inset: 0; background: rgba(10, 22, 40, 0.55); z-index: 1500; display: none; overflow-y: auto; padding: 40px 20px; }
+.modal-overlay.is-open { display: flex; justify-content: center; align-items: flex-start; }
+.modal-card { background: #fff; border-radius: var(--radius-lg); max-width: 860px; width: 100%; box-shadow: var(--shadow-lg); overflow: hidden; }
+.modal-head { padding: 22px 28px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: flex-start; }
+.modal-head h3 { font-size: 18px; font-weight: 600; color: var(--navy-900); }
+.modal-head p { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+.modal-close { background: transparent; border: none; font-size: 22px; color: var(--gray-400); cursor: pointer; padding: 0; width: 32px; height: 32px; border-radius: var(--radius-sm); }
+.modal-close:hover { background: var(--gray-50); color: var(--navy-900); }
+.modal-body { padding: 24px 28px; max-height: calc(100vh - 220px); overflow-y: auto; }
+.modal-foot { padding: 16px 28px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px; background: var(--gray-50); }
+
+.form-section { margin-bottom: 22px; }
+.form-section h5 { font-size: 13px; font-weight: 600; color: var(--navy-900); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.form-section h5 .hint { font-size: 11px; font-weight: 400; color: var(--gray-400); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px; }
+.form-row.full { grid-template-columns: 1fr; }
+.fld label { display: block; font-size: 12px; color: var(--gray-500); margin-bottom: 5px; }
+.fld label .req { color: var(--danger-500); }
+.fld input, .fld textarea, .fld select { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; }
+.fld input:focus, .fld textarea:focus, .fld select:focus { outline: none; border-color: var(--blue-500); }
+.fld textarea { resize: vertical; min-height: 62px; }
+
+/* 物料行 */
+.item-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 2fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+.item-row input { padding: 7px 10px; font-size: 13px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-family: inherit; }
+.item-row .del-btn { background: transparent; border: 1px solid var(--gray-200); color: var(--gray-400); width: 32px; height: 32px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; }
+.item-row .del-btn:hover { color: var(--danger-500); border-color: var(--danger-500); }
+.item-row-head { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 2fr auto; gap: 8px; padding: 0 0 6px; font-size: 11px; color: var(--gray-400); }
+.add-line-btn { margin-top: 10px; padding: 8px 14px; background: var(--blue-50); color: var(--blue-700); border: 1px dashed var(--blue-200); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: inherit; width: 100%; }
+.add-line-btn:hover { background: var(--blue-100); }
+
+/* 供应商选择器 */
+.supplier-picker { border: 1px solid var(--gray-200); border-radius: var(--radius-sm); overflow: hidden; }
+.supplier-picker .sp-search { padding: 10px 14px; border-bottom: 1px solid var(--gray-100); background: var(--gray-50); }
+.supplier-picker .sp-search input { width: 100%; padding: 6px 10px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 12.5px; font-family: inherit; background: #fff; }
+.supplier-picker .sp-list { max-height: 240px; overflow-y: auto; }
+.sp-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--gray-100); cursor: pointer; font-size: 13px; }
+.sp-item:hover { background: var(--gray-50); }
+.sp-item:last-child { border-bottom: none; }
+.sp-item input { margin: 0; }
+.sp-item .sp-name { font-weight: 500; color: var(--navy-900); }
+.sp-item .sp-meta { font-size: 11.5px; color: var(--gray-500); }
+.sp-selected-count { padding: 8px 14px; background: var(--blue-50); color: var(--blue-700); font-size: 12px; border-top: 1px solid var(--blue-100); }
+
+.form-error { color: var(--danger-500); font-size: 12px; margin-top: 8px; }
+
+@media (max-width: 900px) {
+    .admin-aside { display: none; }
+    .admin-shell { grid-template-columns: 1fr; }
+    .admin-main { padding: 24px 20px; }
+    .item-row, .item-row-head { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="../index.html" class="nav-logo"><img src="../assets/logo-white.png" alt="欧阳聚德"><span class="nav-suffix">采购中心</span></a>
+        <ul class="nav-links">
+            <li><a href="https://hboyjd.com">官网首页</a></li>
+            <li><a href="../bids.html">采购公告</a></li>
+            <li><a href="index.html">采购中心</a></li>
+            <li><a href="#">帮助中心</a></li>
+        </ul>
+        <a href="#" class="nav-cta" style="background: transparent; border: 1px solid rgba(255,255,255,0.3);"><span>加载中</span></a>
+    </div>
+</nav>
+
+<div class="admin-shell">
+    <!-- Sidebar -->
+    <aside class="admin-aside">
+        <div class="admin-user">
+            <div class="avatar" id="asideAvatar">欧</div>
+            <div class="info">
+                <div class="name" id="asideName">加载中</div>
+                <div class="role"><span class="pill pill-blue" id="asideRole">采购主管</span></div>
+            </div>
+        </div>
+        <div class="aside-group">
+            <h6>工作台</h6>
+            <nav class="aside-nav"><a href="index.html"><span>概览首页</span></a></nav>
+        </div>
+        <div class="aside-group">
+            <h6>供应商管理</h6>
+            <nav class="aside-nav">
+                <a href="suppliers.html"><span>合格供应商库</span></a>
+                <a href="suppliers.html?status=pending"><span>入驻审核</span></a>
+                <a href="#"><span>分级与评价</span></a>
+                <a href="#"><span>黑名单</span></a>
+            </nav>
+        </div>
+        <div class="aside-group">
+            <h6>寻源与采购</h6>
+            <nav class="aside-nav">
+                <a href="inquiries.html" class="active"><span>询价单管理</span><span class="count" id="navRfqCount">—</span></a>
+                <a href="compare.html"><span>比价与定点</span></a>
+                <a href="#"><span>采购订单</span></a>
+                <a href="#"><span>合同管理</span></a>
+            </nav>
+        </div>
+        <div class="aside-group">
+            <h6>基础资料</h6>
+            <nav class="aside-nav">
+                <a href="#"><span>物料主档</span></a>
+                <a href="#"><span>物料分类</span></a>
+                <a href="#"><span>员工与权限</span></a>
+                <a href="#"><span>消息中心</span></a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="admin-main">
+        <div class="page-head">
+            <div>
+                <h1>询价单管理</h1>
+                <div class="sub">建单 → 邀请供应商填价 → 内部比价 → 定标。一行一行填进来的纯粹比价表。</div>
+            </div>
+            <button class="btn-primary" id="openCreateBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                新建询价单
+            </button>
+        </div>
+
+        <!-- 筛选条 -->
+        <div class="filter-bar">
+            <button class="tab-pill active" data-status="">全部</button>
+            <button class="tab-pill" data-status="open">填价中</button>
+            <button class="tab-pill" data-status="closed">已关闭</button>
+            <input type="text" class="search-input" id="searchInput" placeholder="按编号或标题搜索...">
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-card">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th style="width:130px">编号</th>
+                        <th>标题</th>
+                        <th style="width:90px">物料数</th>
+                        <th style="width:140px">邀请/已报</th>
+                        <th style="width:110px">创建人</th>
+                        <th style="width:120px">创建时间</th>
+                        <th style="width:90px">状态</th>
+                        <th style="width:150px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tblBody">
+                    <tr><td colspan="8" style="text-align:center;padding:60px;color:var(--gray-400)">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pager" id="pager"></div>
+    </main>
+</div>
+
+<!-- ============ 新建询价单模态框 ============ -->
+<div class="modal-overlay" id="createModal">
+    <div class="modal-card">
+        <div class="modal-head">
+            <div>
+                <h3>新建询价单</h3>
+                <p>填写物料清单、勾选供应商,系统会自动生成编号并邀请供应商填报价格。</p>
+            </div>
+            <button class="modal-close" id="closeModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="createForm">
+                <!-- 基本信息 -->
+                <div class="form-section">
+                    <h5>基本信息</h5>
+                    <div class="form-row full">
+                        <div class="fld">
+                            <label>询价单标题 <span class="req">*</span></label>
+                            <input type="text" name="title" placeholder="如:2026年5月五金标件采购" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="fld">
+                            <label>要求交期</label>
+                            <input type="text" name="delivery_date" placeholder="如:30天内 / 2026-06-01">
+                        </div>
+                        <div class="fld">
+                            <label>交货地址</label>
+                            <input type="text" name="delivery_address" placeholder="如:湖北十堰欧阳聚德厂区">
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="fld">
+                            <label>备注说明</label>
+                            <textarea name="remark" placeholder="质量要求、付款方式、其他补充..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 物料清单 -->
+                <div class="form-section">
+                    <h5>物料清单 <span class="hint">至少添加一行</span></h5>
+                    <div class="item-row-head">
+                        <div>物料名称 *</div>
+                        <div>规格/型号</div>
+                        <div>单位</div>
+                        <div>数量 *</div>
+                        <div>备注</div>
+                        <div></div>
+                    </div>
+                    <div id="itemRows"></div>
+                    <button type="button" class="add-line-btn" id="addRowBtn">+ 添加一行</button>
+                </div>
+
+                <!-- 供应商选择 -->
+                <div class="form-section">
+                    <h5>邀请供应商 <span class="hint">至少勾选1家,推荐3-5家进行比价</span></h5>
+                    <div class="supplier-picker">
+                        <div class="sp-search">
+                            <input type="text" id="supplierSearch" placeholder="按公司名/联系人搜索...">
+                        </div>
+                        <div class="sp-list" id="supplierList">
+                            <div style="padding:30px;text-align:center;color:var(--gray-400);font-size:13px">加载供应商列表...</div>
+                        </div>
+                        <div class="sp-selected-count" id="selectedCount">已选 0 家</div>
+                    </div>
+                </div>
+
+                <div id="formError" class="form-error" hidden></div>
+            </form>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn-ghost" id="cancelBtn">取消</button>
+            <button type="button" class="btn-primary" id="submitBtn">创建并邀请报价</button>
+        </div>
+    </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+    if (!requireAuth({ requireAdmin: true })) return;
+
+    const u = SRMAuth.getUser();
+    if (u) {
+        const roleLabel = u.role === "admin" ? "管理员" : u.role === "buyer" ? "采购主管" : "审批员";
+        document.getElementById("asideAvatar").textContent = (u.name || u.username).charAt(0);
+        document.getElementById("asideName").textContent = u.name || u.username;
+        document.getElementById("asideRole").textContent = roleLabel;
+    }
+
+    const esc = (s) => (s || "").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+    const fmtDate = (iso) => iso ? iso.slice(0, 10) : "—";
+
+    // ============ 列表查询 ============
+    const state = { status: "", keyword: "", page: 1, page_size: 20 };
+
+    async function loadList() {
+        const body = document.getElementById("tblBody");
+        body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:60px;color:var(--gray-400)">加载中...</td></tr>`;
+        const params = new URLSearchParams();
+        if (state.status) params.set("status", state.status);
+        if (state.keyword) params.set("keyword", state.keyword);
+        params.set("page", state.page);
+        params.set("page_size", state.page_size);
+        try {
+            const res = await srmFetch("/api/v1/inquiries?" + params);
+            const data = await res.json();
+            if (!data.items.length) {
+                body.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color:var(--gray-300)"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <h4>${state.status || state.keyword ? "没有符合条件的询价单" : "还没有任何询价单"}</h4>
+                    <p>${state.status || state.keyword ? "试试清空筛选,或调整关键字。" : "点击右上角「新建询价单」开始第一次比价。"}</p>
+                </div></td></tr>`;
+                document.getElementById("pager").innerHTML = "";
+                document.getElementById("navRfqCount").textContent = data.total;
+                return;
+            }
+            document.getElementById("navRfqCount").textContent = data.total;
+
+            body.innerHTML = data.items.map((x) => {
+                const quoted = x.quoted_count || 0;
+                const invited = x.invited_count || 0;
+                const chipCls = quoted === 0 ? "" : quoted === invited ? "done" : "partial";
+                const statusCls = x.status === "open" ? "status-open" : "status-closed";
+                const statusTxt = x.status === "open" ? "填价中" : "已关闭";
+                const awardedBadge = x.awarded_supplier_name ? `<div style="font-size:11px;color:var(--ok-500);margin-top:3px">已定标:${esc(x.awarded_supplier_name)}</div>` : "";
+                return `
+                    <tr data-id="${x.id}">
+                        <td><span class="code">${esc(x.code)}</span></td>
+                        <td class="title-cell">
+                            <a href="inquiry-detail.html?id=${x.id}">${esc(x.title)}</a>
+                            ${awardedBadge}
+                        </td>
+                        <td>${x.item_count} 项</td>
+                        <td><span class="progress-chip ${chipCls}">${quoted} / ${invited}</span></td>
+                        <td>${esc(x.buyer_name || "—")}</td>
+                        <td>${fmtDate(x.created_at)}</td>
+                        <td><span class="status-pill ${statusCls}">${statusTxt}</span></td>
+                        <td>
+                            <div class="row-actions">
+                                <a href="inquiry-detail.html?id=${x.id}" class="primary">比价</a>
+                                ${x.status === "open" ? `<button data-close="${x.id}">关闭</button>` : ""}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+
+            // 分页
+            const totalPage = Math.max(1, Math.ceil(data.total / data.page_size));
+            const pager = document.getElementById("pager");
+            pager.innerHTML = totalPage <= 1 ? "" : Array.from({length: totalPage}, (_, i) => i + 1).map(n => `<button class="${n === state.page ? 'active' : ''}" data-page="${n}">${n}</button>`).join("");
+        } catch (err) {
+            body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:60px;color:var(--danger-500)">加载失败: ${esc(err.message)}</td></tr>`;
+        }
+    }
+
+    document.querySelectorAll(".tab-pill").forEach(b => b.addEventListener("click", () => {
+        document.querySelectorAll(".tab-pill").forEach(x => x.classList.remove("active"));
+        b.classList.add("active");
+        state.status = b.dataset.status;
+        state.page = 1;
+        loadList();
+    }));
+    let searchTimer;
+    document.getElementById("searchInput").addEventListener("input", (e) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            state.keyword = e.target.value.trim();
+            state.page = 1;
+            loadList();
+        }, 300);
+    });
+    document.getElementById("pager").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-page]");
+        if (!b) return;
+        state.page = parseInt(b.dataset.page);
+        loadList();
+    });
+    document.getElementById("tblBody").addEventListener("click", async (e) => {
+        const b = e.target.closest("[data-close]");
+        if (!b) return;
+        if (!confirm("确认关闭此询价单?关闭后供应商无法再提交或修改报价。")) return;
+        try {
+            const res = await srmFetch(`/api/v1/inquiries/${b.dataset.close}/close`, { method: "POST" });
+            if (!res.ok) throw new Error((await res.json()).detail || "关闭失败");
+            loadList();
+        } catch (err) {
+            alert("操作失败: " + err.message);
+        }
+    });
+
+    // ============ 新建模态框 ============
+    const modal = document.getElementById("createModal");
+    const openBtn = document.getElementById("openCreateBtn");
+    const closeBtn = document.getElementById("closeModalBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const submitBtn = document.getElementById("submitBtn");
+    const itemRows = document.getElementById("itemRows");
+    const addRowBtn = document.getElementById("addRowBtn");
+    const supplierList = document.getElementById("supplierList");
+    const selectedCount = document.getElementById("selectedCount");
+
+    let allSuppliers = [];
+    const selectedIds = new Set();
+
+    function rowTpl() {
+        return `
+            <div class="item-row">
+                <input name="name" placeholder="如:六角螺栓M12">
+                <input name="spec" placeholder="如:GB/T5782 8.8级 镀锌">
+                <input name="unit" placeholder="个" value="个">
+                <input name="qty" type="number" min="0" step="0.01" placeholder="0">
+                <input name="remark" placeholder="选填">
+                <button type="button" class="del-btn" data-del>&times;</button>
+            </div>
+        `;
+    }
+    function addRow() {
+        const div = document.createElement("div");
+        div.innerHTML = rowTpl();
+        itemRows.appendChild(div.firstElementChild);
+    }
+    addRowBtn.addEventListener("click", addRow);
+    itemRows.addEventListener("click", (e) => {
+        if (e.target.closest("[data-del]")) {
+            if (itemRows.children.length <= 1) { alert("至少保留一行"); return; }
+            e.target.closest(".item-row").remove();
+        }
+    });
+
+    async function loadSuppliers() {
+        try {
+            const res = await srmFetch("/api/v1/suppliers?status=approved&page_size=100");
+            const data = await res.json();
+            allSuppliers = data.items;
+            renderSuppliers();
+        } catch (err) {
+            supplierList.innerHTML = `<div style="padding:30px;text-align:center;color:var(--danger-500);font-size:13px">加载失败: ${esc(err.message)}</div>`;
+        }
+    }
+    function renderSuppliers(kw) {
+        kw = (kw || "").trim().toLowerCase();
+        const filtered = kw ? allSuppliers.filter(s =>
+            (s.company_name || "").toLowerCase().includes(kw) ||
+            (s.contact_name || "").toLowerCase().includes(kw) ||
+            (s.contact_phone || "").includes(kw)
+        ) : allSuppliers;
+        if (!filtered.length) {
+            supplierList.innerHTML = `<div style="padding:30px;text-align:center;color:var(--gray-400);font-size:13px">${kw ? "没有匹配的供应商" : "还没有已审核通过的供应商,请先去「合格供应商库」审核"}</div>`;
+            return;
+        }
+        supplierList.innerHTML = filtered.map(s => `
+            <label class="sp-item">
+                <input type="checkbox" value="${s.id}" ${selectedIds.has(s.id) ? "checked" : ""}>
+                <div style="flex:1">
+                    <div class="sp-name">${esc(s.company_name)}</div>
+                    <div class="sp-meta">${esc(s.code)}${s.contact_name ? " · " + esc(s.contact_name) : ""}${s.contact_phone ? " · " + esc(s.contact_phone) : ""}${s.grade ? " · " + esc(s.grade) + "级" : ""}</div>
+                </div>
+            </label>
+        `).join("");
+    }
+    supplierList.addEventListener("change", (e) => {
+        if (e.target.matches('input[type="checkbox"]')) {
+            const id = parseInt(e.target.value);
+            if (e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+            selectedCount.textContent = `已选 ${selectedIds.size} 家`;
+        }
+    });
+    document.getElementById("supplierSearch").addEventListener("input", (e) => {
+        renderSuppliers(e.target.value);
+    });
+
+    function openModal() {
+        // reset
+        document.getElementById("createForm").reset();
+        itemRows.innerHTML = "";
+        addRow();
+        addRow(); // 默认2行
+        selectedIds.clear();
+        selectedCount.textContent = "已选 0 家";
+        document.getElementById("formError").hidden = true;
+        document.getElementById("supplierSearch").value = "";
+        modal.classList.add("is-open");
+        loadSuppliers();
+    }
+    function closeModal() { modal.classList.remove("is-open"); }
+    openBtn.addEventListener("click", openModal);
+    closeBtn.addEventListener("click", closeModal);
+    cancelBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    submitBtn.addEventListener("click", async () => {
+        const errEl = document.getElementById("formError");
+        errEl.hidden = true;
+
+        const form = document.getElementById("createForm");
+        const title = form.title.value.trim();
+        if (!title || title.length < 2) { errEl.textContent = "请填写询价单标题"; errEl.hidden = false; return; }
+        const items = [];
+        for (const row of itemRows.querySelectorAll(".item-row")) {
+            const name = row.querySelector('[name=name]').value.trim();
+            const qty = parseFloat(row.querySelector('[name=qty]').value);
+            if (!name) continue;  // 空行跳过
+            if (!qty || qty <= 0) { errEl.textContent = `物料「${name}」数量必须 > 0`; errEl.hidden = false; return; }
+            items.push({
+                name,
+                spec: row.querySelector('[name=spec]').value.trim() || null,
+                unit: row.querySelector('[name=unit]').value.trim() || "个",
+                qty,
+                remark: row.querySelector('[name=remark]').value.trim() || null,
+            });
+        }
+        if (!items.length) { errEl.textContent = "请至少添加一行物料"; errEl.hidden = false; return; }
+        if (!selectedIds.size) { errEl.textContent = "请至少勾选一家供应商"; errEl.hidden = false; return; }
+
+        const payload = {
+            title,
+            remark: form.remark.value.trim() || null,
+            delivery_date: form.delivery_date.value.trim() || null,
+            delivery_address: form.delivery_address.value.trim() || null,
+            items,
+            supplier_ids: Array.from(selectedIds),
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "提交中...";
+        try {
+            const res = await srmFetch("/api/v1/inquiries", {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || "创建失败");
+            closeModal();
+            // 直接跳转到比价详情
+            location.href = "inquiry-detail.html?id=" + data.id + "&new=1";
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.hidden = false;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "创建并邀请报价";
+        }
+    });
+
+    loadList();
+})();
+</script>
+</body>
+</html>

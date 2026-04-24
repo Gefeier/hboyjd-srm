@@ -277,18 +277,18 @@ body { background: var(--gray-50); }
             </div>
         </div>
 
-        <!-- 右:待办/通知 -->
+        <!-- 右:待我填价(我的询价) -->
         <div class="panel">
             <div class="panel-head">
-                <h3>我的询价</h3>
+                <h3>待我填价</h3>
+                <span style="font-size:12px;color:var(--gray-500)" id="inquiryCountLbl">—</span>
             </div>
-            <div class="panel-body" style="padding: 0;">
+            <div class="panel-body" style="padding: 0;" id="myInquiryBox">
                 <div class="empty-state">
                     <div class="icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     </div>
-                    <h4 id="bidsEmptyTitle">暂无询价单</h4>
-                    <p id="bidsEmptyDesc">审核通过后，采购部将按您的供应品类发起邀标。</p>
+                    <h4>加载中...</h4>
                 </div>
             </div>
         </div>
@@ -476,19 +476,52 @@ body { background: var(--gray-50); }
                 document.getElementById("reviewNoteText").textContent = sup.review_note;
             }
 
-            // 询价区文案随状态
-            if (sup.status === "approved") {
-                setText("bidsEmptyTitle", "暂无新询价");
-                setText("bidsEmptyDesc", "采购部尚未发起与您品类匹配的采购询价。上线后将在此显示。");
-            } else if (sup.status === "rejected") {
-                setText("bidsEmptyTitle", "暂无法参与询价");
-                setText("bidsEmptyDesc", "请先通过资质审核后再参与询价。");
-            }
         } catch (err) {
             setText("dashSub", "加载失败：" + err.message);
         }
     }
+
+    /* ========== 我的询价 ========== */
+    async function loadMyInquiries() {
+        const box = document.getElementById("myInquiryBox");
+        try {
+            const res = await srmFetch("/api/v1/my-inquiries");
+            if (!res.ok) throw new Error((await res.json()).detail || "加载失败");
+            const items = await res.json();
+            document.getElementById("inquiryCountLbl").textContent = `共 ${items.length} 单`;
+            if (!items.length) {
+                box.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                        <h4>暂无询价单</h4>
+                        <p>采购部发起询价后,系统会邀请您来此填写报价。</p>
+                    </div>`;
+                return;
+            }
+            const fmt = (iso) => iso ? iso.slice(0, 10) : "—";
+            const esc = (s) => (s || "").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+            box.innerHTML = `<div style="padding:8px 0">` + items.map(x => {
+                const isOpen = x.status === "open";
+                const quoted = x.quoted_count;
+                const myQuotedHint = "";  // 留后: 未来后端加 my_quoted 字段
+                const statusDot = isOpen ? '<span style="display:inline-block;width:8px;height:8px;background:var(--blue-500);border-radius:50%;margin-right:6px"></span>' : '<span style="display:inline-block;width:8px;height:8px;background:var(--gray-300);border-radius:50%;margin-right:6px"></span>';
+                const action = isOpen ? '填写报价 →' : '查看详情 →';
+                const awarded = x.awarded_supplier_name ? `<div style="font-size:11px;color:var(--ok-500);margin-top:3px">已定标:${esc(x.awarded_supplier_name)}</div>` : "";
+                return `
+                    <a href="my-quote.html?id=${x.id}" style="display:block;padding:16px 28px;border-bottom:1px solid var(--gray-100);text-decoration:none;color:inherit;transition:background 0.12s" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+                        <div style="font-family:ui-monospace,monospace;font-size:11.5px;color:var(--gray-500);margin-bottom:4px">${statusDot}${esc(x.code)} · ${fmt(x.created_at)}</div>
+                        <div style="font-size:14px;color:var(--navy-900);font-weight:500;line-height:1.4;margin-bottom:4px">${esc(x.title)}</div>
+                        <div style="font-size:11.5px;color:var(--gray-500)">${x.item_count} 项物料 · ${isOpen ? '<span style="color:var(--blue-600)">' + action + '</span>' : '<span>' + action + '</span>'}</div>
+                        ${awarded}
+                    </a>`;
+            }).join("") + `</div>`;
+        } catch (err) {
+            box.innerHTML = `<div class="empty-state" style="color:var(--danger-500)"><p>加载失败: ${err.message}</p></div>`;
+        }
+    }
+
     load();
+    loadMyInquiries();
 })();
 </script>
 </body>

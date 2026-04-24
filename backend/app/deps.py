@@ -4,10 +4,33 @@ from jose import JWTError
 from sqlmodel import Session, select
 
 from app.db import get_session
+from app.models.supplier import Supplier
 from app.models.user import User, UserRole
 from app.security import decode_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+
+def get_current_supplier(session: Session = Depends(get_session), token: str = Depends(oauth2_scheme)) -> Supplier:
+    """JWT → Supplier。供应商专用接口挂这个。"""
+    cred_err = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="登录已失效,请重新登录")
+    try:
+        payload = decode_access_token(token)
+    except JWTError as exc:
+        raise cred_err from exc
+    if payload.get("role") != "supplier":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要供应商登录")
+    sup = None
+    sup_id = payload.get("supplier_id")
+    if sup_id:
+        sup = session.get(Supplier, sup_id)
+    if not sup:
+        username = payload.get("sub")
+        if username:
+            sup = session.exec(select(Supplier).where(Supplier.login_username == username)).first()
+    if not sup:
+        raise cred_err
+    return sup
 
 
 def get_current_user(session: Session = Depends(get_session), token: str = Depends(oauth2_scheme)) -> User:

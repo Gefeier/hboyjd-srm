@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>填写报价 · 供应商工作台 · 欧阳聚德供应商协同平台</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+body { background: var(--gray-50); }
+
+.wrap { max-width: 1100px; margin: 0 auto; padding: 100px 24px 60px; }
+
+.crumb { font-size: 12px; color: var(--gray-500); margin-bottom: 12px; }
+.crumb a { color: var(--blue-600); text-decoration: none; }
+.crumb a:hover { text-decoration: underline; }
+
+/* 头卡 */
+.head-card {
+    background: linear-gradient(135deg, var(--navy-900), var(--navy-700));
+    color: #fff;
+    border-radius: var(--radius-lg);
+    padding: 28px 34px;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+}
+.head-card::after {
+    content: "";
+    position: absolute; right: -60px; top: -60px;
+    width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(96,165,250,0.25), transparent 65%);
+    pointer-events: none;
+}
+.head-card .code-txt { font-size: 12px; color: var(--blue-400); font-family: ui-monospace, monospace; letter-spacing: 1px; margin-bottom: 8px; }
+.head-card h1 { font-size: 22px; font-weight: 600; margin-bottom: 10px; line-height: 1.4; }
+.head-card .meta { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.8; }
+.head-card .meta .sep { margin: 0 10px; color: rgba(255,255,255,0.25); }
+.st-badge { display: inline-block; padding: 3px 12px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 500; margin-right: 8px; }
+.st-badge.open { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(96,165,250,0.4); }
+.st-badge.closed { background: rgba(100,116,139,0.2); color: #cbd5e1; border: 1px solid rgba(148,163,184,0.4); }
+.st-badge.quoted { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
+
+/* 采购要求 */
+.req-card { background: #fff; border: 1px solid var(--gray-100); border-radius: var(--radius); padding: 20px 26px; margin-bottom: 18px; }
+.req-card h4 { font-size: 13px; color: var(--navy-900); margin-bottom: 12px; font-weight: 600; }
+.req-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; font-size: 13px; }
+.req-grid .fld .l { color: var(--gray-500); font-size: 11.5px; margin-bottom: 3px; }
+.req-grid .fld .v { color: var(--gray-700); }
+.req-remark { grid-column: 1 / -1; padding-top: 12px; margin-top: 4px; border-top: 1px dashed var(--gray-100); color: var(--gray-700); line-height: 1.7; font-size: 13px; }
+
+/* 报价表 */
+.quote-card { background: #fff; border: 1px solid var(--gray-100); border-radius: var(--radius); overflow: hidden; }
+.quote-head { padding: 18px 26px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+.quote-head h3 { font-size: 15px; font-weight: 600; color: var(--navy-900); }
+.quote-head .tip { font-size: 12px; color: var(--gray-500); }
+
+.q-tbl { width: 100%; border-collapse: collapse; }
+.q-tbl th { background: var(--gray-50); font-size: 12px; color: var(--gray-600); font-weight: 500; text-align: left; padding: 12px 16px; }
+.q-tbl td { padding: 14px 16px; border-bottom: 1px solid var(--gray-100); font-size: 13px; color: var(--gray-700); vertical-align: top; }
+.q-tbl tr:last-child td { border-bottom: none; }
+.q-tbl .idx { color: var(--gray-400); font-variant-numeric: tabular-nums; width: 40px; }
+.q-tbl .item-name { color: var(--navy-900); font-weight: 500; }
+.q-tbl .item-spec { color: var(--gray-500); font-size: 11.5px; margin-top: 2px; }
+.q-tbl .qty { color: var(--navy-900); font-variant-numeric: tabular-nums; font-weight: 500; }
+.q-tbl .qty .unit { font-size: 11.5px; color: var(--gray-400); font-weight: 400; margin-left: 2px; }
+.q-tbl .price-input { width: 130px; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 13px; font-family: ui-monospace, monospace; text-align: right; }
+.q-tbl .price-input:focus { outline: none; border-color: var(--blue-500); }
+.q-tbl .price-input:disabled { background: var(--gray-50); }
+.q-tbl .note-input { width: 100%; min-width: 140px; padding: 7px 10px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 12.5px; font-family: inherit; }
+.q-tbl .note-input:focus { outline: none; border-color: var(--blue-500); }
+.q-tbl .subtotal { color: var(--navy-900); font-variant-numeric: tabular-nums; font-weight: 500; text-align: right; white-space: nowrap; }
+
+.total-bar { padding: 18px 26px; background: var(--gray-50); border-top: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+.total-bar .lbl { font-size: 13px; color: var(--gray-600); }
+.total-bar .val { font-size: 22px; color: var(--navy-900); font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 8px; }
+.actions { display: flex; gap: 10px; }
+
+.btn { padding: 10px 22px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; border: 1px solid transparent; transition: all 0.15s; }
+.btn-primary { background: var(--blue-600); color: #fff; }
+.btn-primary:hover { background: var(--blue-700); }
+.btn-primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+.btn-ghost { background: #fff; border-color: var(--gray-200); color: var(--gray-700); }
+.btn-ghost:hover { border-color: var(--gray-400); color: var(--navy-900); }
+
+.msg-box { margin-bottom: 16px; padding: 12px 18px; border-radius: var(--radius-sm); font-size: 13px; }
+.msg-box.ok { background: var(--ok-50); color: #065f46; border: 1px solid #6ee7b7; }
+.msg-box.err { background: var(--danger-50); color: #991b1b; border: 1px solid #fecaca; }
+
+.closed-banner { margin-bottom: 18px; padding: 14px 18px; background: var(--gray-100); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 13px; color: var(--gray-700); display: flex; align-items: center; gap: 10px; }
+
+@media (max-width: 720px) {
+    .req-grid { grid-template-columns: 1fr; }
+    .q-tbl .price-input { width: 100px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo"><img src="assets/logo-white.png" alt="欧阳聚德"><span class="nav-suffix">供应商工作台</span></a>
+        <ul class="nav-links">
+            <li><a href="index.html">门户首页</a></li>
+            <li><a href="bids.html">采购公告</a></li>
+            <li><a href="dashboard.html" class="active">我的工作台</a></li>
+        </ul>
+        <a href="#" class="nav-cta" style="background: transparent; border: 1px solid rgba(255,255,255,0.3);"><span>加载中</span></a>
+    </div>
+</nav>
+
+<div class="wrap">
+    <div class="crumb">
+        <a href="dashboard.html">我的工作台</a> / 填写报价 / <span id="crumbCode">—</span>
+    </div>
+
+    <div id="msgBox"></div>
+    <div id="content"><div style="padding:60px;text-align:center;color:var(--gray-400)">加载中...</div></div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+(function () {
+    if (!requireAuth()) return;
+    const user = SRMAuth.getUser();
+    if (!user || user.role !== "supplier") {
+        alert("仅供应商账号可访问此页面");
+        location.replace("index.html");
+        return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    const inquiryId = parseInt(params.get("id"));
+    if (!inquiryId) { alert("缺少询价单ID"); location.href = "dashboard.html"; return; }
+
+    const esc = (s) => (s || "").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+    const fmtMoney = (n) => Number(n).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtDate = (iso) => iso ? iso.slice(0, 16).replace("T", " ") : "—";
+
+    function showMsg(kind, text) {
+        const box = document.getElementById("msgBox");
+        box.innerHTML = `<div class="msg-box ${kind}">${esc(text)}</div>`;
+        if (kind === "ok") setTimeout(() => box.innerHTML = "", 3500);
+    }
+
+    async function load() {
+        const box = document.getElementById("content");
+        try {
+            const res = await srmFetch("/api/v1/my-inquiries/" + inquiryId);
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.detail || "加载失败");
+            render(d);
+            document.getElementById("crumbCode").textContent = d.code;
+        } catch (err) {
+            box.innerHTML = `<div class="msg-box err" style="margin:0">加载失败: ${esc(err.message)}</div><p style="text-align:center;margin-top:20px"><a href="dashboard.html">返回工作台</a></p>`;
+        }
+    }
+
+    function render(d) {
+        const isClosed = d.status === "closed";
+        const hasQuoted = !!d.quoted_at;
+
+        const statusBadge = isClosed
+            ? '<span class="st-badge closed">已关闭</span>'
+            : (hasQuoted
+                ? '<span class="st-badge quoted">已报价</span>'
+                : '<span class="st-badge open">待填价</span>');
+
+        const head = `
+          <section class="head-card">
+            <div class="code-txt">${esc(d.code)}</div>
+            <h1>${esc(d.title)}</h1>
+            <div class="meta">
+                ${statusBadge}
+                <span class="sep">·</span>发起于 ${fmtDate(d.created_at)}
+                ${hasQuoted ? `<span class="sep">·</span>你已于 ${fmtDate(d.quoted_at)} 提交报价(可修改)` : ""}
+            </div>
+          </section>
+        `;
+
+        const req = `
+          <section class="req-card">
+            <h4>采购要求</h4>
+            <div class="req-grid">
+                <div class="fld"><div class="l">要求交期</div><div class="v">${esc(d.delivery_date || "—")}</div></div>
+                <div class="fld"><div class="l">交货地址</div><div class="v">${esc(d.delivery_address || "—")}</div></div>
+                <div class="fld"><div class="l">物料总数</div><div class="v">${d.items.length} 项</div></div>
+                ${d.remark ? `<div class="req-remark">备注:${esc(d.remark)}</div>` : ""}
+            </div>
+          </section>
+        `;
+
+        let tableBody, closedBanner = "";
+        if (isClosed) {
+            closedBanner = `<div class="closed-banner">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                此询价单已关闭,报价不可再修改。以下为历史记录。
+            </div>`;
+        }
+
+        tableBody = d.items.map((it, idx) => {
+            const v = it.my_unit_price != null ? it.my_unit_price : "";
+            const note = it.my_note || "";
+            return `
+                <tr data-row data-item-id="${it.id}" data-qty="${it.qty}">
+                    <td class="idx">${idx + 1}</td>
+                    <td>
+                        <div class="item-name">${esc(it.name)}</div>
+                        ${it.spec ? `<div class="item-spec">${esc(it.spec)}</div>` : ""}
+                        ${it.remark ? `<div class="item-spec" style="color:var(--gray-400)">采购备注: ${esc(it.remark)}</div>` : ""}
+                    </td>
+                    <td class="qty">${Number(it.qty)}<span class="unit">${esc(it.unit)}</span></td>
+                    <td><input type="number" class="price-input" data-price min="0" step="0.0001" value="${v}" placeholder="0.00" ${isClosed ? "disabled" : ""}></td>
+                    <td><input type="text" class="note-input" data-note value="${esc(note)}" placeholder="含税/运费/交期等备注" ${isClosed ? "disabled" : ""}></td>
+                    <td class="subtotal" data-subtotal>—</td>
+                </tr>
+            `;
+        }).join("");
+
+        const quoteCard = `
+          <section class="quote-card">
+            <div class="quote-head">
+                <h3>报价明细</h3>
+                <span class="tip">${isClosed ? "历史报价" : "填入单价即可,系统自动计算小计。未填价的行视为不报价。"}</span>
+            </div>
+            <table class="q-tbl">
+                <thead>
+                    <tr>
+                        <th style="width:40px">#</th>
+                        <th>物料 / 规格</th>
+                        <th style="width:100px">数量</th>
+                        <th style="width:160px">单价 (元)</th>
+                        <th>备注</th>
+                        <th style="width:130px;text-align:right">小计</th>
+                    </tr>
+                </thead>
+                <tbody>${tableBody}</tbody>
+            </table>
+            <div class="total-bar">
+                <div>
+                    <span class="lbl">本单报价合计:</span>
+                    <span class="val">¥ <span id="totalVal">0.00</span></span>
+                </div>
+                <div class="actions">
+                    <a href="dashboard.html" class="btn btn-ghost" style="text-decoration:none;display:inline-block;line-height:1.3">返回工作台</a>
+                    ${isClosed ? "" : `<button type="button" class="btn btn-primary" id="submitBtn">${hasQuoted ? "保存修改" : "提交报价"}</button>`}
+                </div>
+            </div>
+          </section>
+        `;
+
+        document.getElementById("content").innerHTML = head + req + closedBanner + quoteCard;
+
+        const totalEl = document.getElementById("totalVal");
+        function recalc() {
+            let sum = 0;
+            document.querySelectorAll("[data-row]").forEach(row => {
+                const qty = parseFloat(row.dataset.qty) || 0;
+                const price = parseFloat(row.querySelector("[data-price]").value) || 0;
+                const subEl = row.querySelector("[data-subtotal]");
+                if (price > 0) {
+                    const sub = qty * price;
+                    subEl.textContent = "¥" + fmtMoney(sub);
+                    subEl.style.color = "var(--navy-900)";
+                    sum += sub;
+                } else {
+                    subEl.textContent = "—";
+                    subEl.style.color = "var(--gray-300)";
+                }
+            });
+            totalEl.textContent = fmtMoney(sum);
+        }
+        document.querySelectorAll("[data-row]").forEach(row => {
+            row.querySelector("[data-price]").addEventListener("input", recalc);
+        });
+        recalc();
+
+        const submitBtn = document.getElementById("submitBtn");
+        if (submitBtn) {
+            submitBtn.addEventListener("click", async () => {
+                const lines = [];
+                for (const row of document.querySelectorAll("[data-row]")) {
+                    const price = parseFloat(row.querySelector("[data-price]").value);
+                    if (!price || price <= 0) continue;
+                    lines.push({
+                        item_id: parseInt(row.dataset.itemId),
+                        unit_price: price,
+                        note: row.querySelector("[data-note]").value.trim() || null,
+                    });
+                }
+                if (!lines.length) {
+                    showMsg("err", "请至少填写一行物料的单价");
+                    return;
+                }
+                submitBtn.disabled = true;
+                submitBtn.textContent = "提交中...";
+                try {
+                    const res = await srmFetch("/api/v1/my-inquiries/" + inquiryId + "/quote", {
+                        method: "PUT",
+                        body: JSON.stringify({ lines }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || "提交失败");
+                    showMsg("ok", "报价已提交(" + lines.length + " 行)。采购部将在关闭询价单后进行内部比价。");
+                    setTimeout(load, 800);
+                } catch (err) {
+                    showMsg("err", err.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = hasQuoted ? "保存修改" : "提交报价";
+                }
+            });
+        }
+    }
+
+    load();
+})();
+</script>
+</body>
+</html>

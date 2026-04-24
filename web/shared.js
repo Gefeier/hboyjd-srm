@@ -113,7 +113,7 @@ function initAuthNav() {
         { icon: ICON.dashboard, label: "采购中心首页", href: P + "admin/index.html" },
         { icon: ICON.users, label: "合格供应商库", href: P + "admin/suppliers.html" },
         { icon: ICON.bolt, label: "待审核入驻", href: P + "admin/suppliers.html?status=pending" },
-        { icon: ICON.scales, label: "比价与定点", href: P + "admin/compare.html" },
+        { icon: ICON.scales, label: "询价单管理", href: P + "admin/inquiries.html" },
         { divider: true },
         { icon: ICON.doc, label: "采购公告", href: P + "bids.html" },
         { icon: ICON.globe, label: "平台门户", href: P + "index.html" },
