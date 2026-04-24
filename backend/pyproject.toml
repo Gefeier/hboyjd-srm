@@ -19,6 +19,9 @@ dependencies = [
   "bcrypt<4.1",
   "pydantic-settings",
   "python-multipart",
+  "requests",
+  "pdfplumber",
+  "openpyxl",
 ]
 
 [project.optional-dependencies]

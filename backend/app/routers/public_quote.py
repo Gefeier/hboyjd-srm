@@ -16,12 +16,15 @@ import mimetypes
 import os
 import secrets
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse
+from sqlalchemy import func as sa_func
 from sqlmodel import Session, select
 
+from app import llm
 from app.db import get_session
 from app.models.inquiry import Inquiry, InquiryInvite, InquiryItem, InquiryStatus, QuoteLine
 from app.models.quote import QuoteAttachment, QuoteRow, QuoteRowSource
@@ -362,22 +365,107 @@ def download_attachment(
 
 
 @router.post("/{token}/attachment/{attachment_id}/parse", response_model=PublicQuoteView)
-def parse_attachment(
+def parse_attachment_endpoint(
     token: str,
     attachment_id: int,
     session: Session = Depends(get_session),
 ) -> PublicQuoteView:
-    """触发 AI 解析附件 — 目前是占位,标记 parse_status=skipped
-    等丽丽把 MiniMax/Claude API key 给后端配上,换成真调用
-    """
+    """用 MiniMax 解析附件 → 提取物料报价行 → 插入 QuoteRow(source=ai_parsed)"""
     invite = _load_invite_by_token(session, token)
     att = session.get(QuoteAttachment, attachment_id)
     if not att or att.inquiry_id != invite.inquiry_id or att.supplier_id != invite.supplier_id:
         raise HTTPException(404, "附件不存在")
-    # TODO: 调 MiniMax/Claude Vision → 解出 rows → 批量插入 QuoteRow(source=ai_parsed)
-    att.parse_status = "skipped"
-    att.parse_note = "AI 解析功能开发中,暂时请在下方表格手动填写。"
+
+    # 未配 key → 降级占位
+    if not llm.is_configured():
+        att.parse_status = "skipped"
+        att.parse_note = "AI 解析暂未配置,请在下方手动填写明细。"
+        att.parsed_at = datetime.now(UTC)
+        session.add(att)
+        session.commit()
+        return _build_view(session, invite)
+
+    # 标记正在解析
+    att.parse_status = "parsing"
+    session.add(att)
+    session.commit()
+
+    disk_path = UPLOAD_ROOT / att.storage_path
+    result = llm.parse_attachment(disk_path, att.mime_type)
+
+    if not result.get("ok"):
+        att.parse_status = "failed"
+        att.parse_note = (result.get("error") or "解析失败")[:500]
+        att.parsed_at = datetime.now(UTC)
+        session.add(att)
+        session.commit()
+        return _build_view(session, invite)
+
+    rows = result.get("rows") or []
+
+    # 清掉旧的 ai_parsed 行(保留 manual),重插
+    old_ai = session.exec(
+        select(QuoteRow).where(
+            QuoteRow.inquiry_id == invite.inquiry_id,
+            QuoteRow.supplier_id == invite.supplier_id,
+            QuoteRow.source == QuoteRowSource.AI_PARSED,
+        )
+    ).all()
+    for r in old_ai:
+        session.delete(r)
+    session.flush()
+
+    # 取当前 manual 行的最大 sort_order,AI 行接在后面
+    cur_max = session.exec(
+        select(sa_func.max(QuoteRow.sort_order)).where(
+            QuoteRow.inquiry_id == invite.inquiry_id,
+            QuoteRow.supplier_id == invite.supplier_id,
+        )
+    ).one()
+    base = (cur_max or 0) + 1
+
+    inserted = 0
+    for idx, r in enumerate(rows):
+        name = (r.get("name") or "").strip()
+        if not name:
+            continue
+        # 单价必填
+        try:
+            price = Decimal(str(r.get("unit_price")))
+            if price <= 0:
+                continue
+        except (InvalidOperation, TypeError):
+            continue
+        # 数量可选
+        qty = None
+        if r.get("qty") is not None:
+            try:
+                qty = Decimal(str(r["qty"]))
+                if qty <= 0:
+                    qty = None
+            except (InvalidOperation, TypeError):
+                qty = None
+        session.add(QuoteRow(
+            inquiry_id=invite.inquiry_id,
+            supplier_id=invite.supplier_id,
+            name=name[:128],
+            spec=((r.get("spec") or "").strip() or None),
+            unit=(r.get("unit") or "个").strip()[:16] or "个",
+            qty=qty,
+            unit_price=price,
+            note=((r.get("note") or "").strip() or None),
+            source=QuoteRowSource.AI_PARSED,
+            sort_order=base + idx,
+        ))
+        inserted += 1
+
+    att.parse_status = "done" if inserted > 0 else "failed"
+    att.parse_note = f"成功识别 {inserted} 行" if inserted else "未能识别出任何有效报价行,请手动填写"
     att.parsed_at = datetime.now(UTC)
     session.add(att)
     session.commit()
+
+    print(f"[llm-parse] attachment={attachment_id} mime={att.mime_type} "
+          f"extracted={len(rows)} inserted={inserted}", flush=True)
+
     return _build_view(session, invite)

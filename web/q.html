@@ -493,9 +493,28 @@ body {
             });
             const d = await res.json();
             if (!res.ok) throw new Error(d.detail || "上传失败");
-            showMsg("ok", "已上传 " + d.filename + ",您可继续上传或在下方「报价明细」中补充");
-            // TODO: 触发解析 — 等 MiniMax key 接入
-            load();  // 重新拉视图刷新附件列表
+            showMsg("info", "已上传 " + d.filename + ",正在识别内容,请稍候...");
+            // 自动触发 AI 解析
+            try {
+                const pres = await fetch(
+                    "/api/v1/public/quote/" + encodeURIComponent(token) + "/attachment/" + d.id + "/parse",
+                    { method: "POST" }
+                );
+                const pdata = await pres.json();
+                if (pres.ok) {
+                    const att = (pdata.attachments || []).find(a => a.id === d.id);
+                    if (att && att.parse_status === "done") {
+                        showMsg("ok", "已识别" + (att.parse_note ? ":" + att.parse_note : "") + "。请核对下方「报价明细」内容,可继续补充或修改后提交。");
+                    } else if (att && att.parse_status === "failed") {
+                        showMsg("info", "附件已上传,但自动识别未能完成(" + (att.parse_note || "请手动填写") + ")。您可在下方手动填写明细。");
+                    } else {
+                        showMsg("ok", "附件已上传。可在下方补充报价明细,或再上传其他文件。");
+                    }
+                }
+            } catch (e) {
+                showMsg("ok", "附件已上传(自动识别跳过)。可在下方手动填写。");
+            }
+            load();  // 重新拉视图刷新附件列表+解析出的rows
         } catch (err) {
             showMsg("err", "上传失败: " + err.message);
         }
