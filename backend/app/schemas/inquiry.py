@@ -144,12 +144,73 @@ class SupplierQuoteDetail(BaseModel):
     attachments: list[AdminAttachment] = []
     total_amount: Decimal = Decimal("0")  # 有qty的行:qty×price;无qty的行:只累加unit_price一次
     row_count: int = 0
+    revision_count: int = 0    # 已提交版本数
+    current_version: int | None = None  # 当前展示的版本号
 
 
 class InquirySupplierQuotesResponse(BaseModel):
     inquiry_id: int
     inquiry_code: str
     suppliers: list[SupplierQuoteDetail] = []
+
+
+# ============== 调价历史(版本) ==============
+
+class RevisionRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    spec: str | None = None
+    unit: str
+    qty: Decimal | None = None
+    unit_price: Decimal
+    note: str | None = None
+    source: str
+    sort_order: int = 0
+
+
+class RevisionSnapshot(BaseModel):
+    """一个版本的完整快照"""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    version: int
+    committed_at: datetime
+    total_amount: Decimal
+    row_count: int
+    source_summary: str
+    has_attachment: bool = False
+    rows: list[RevisionRow] = []
+
+
+class SupplierHistoryResponse(BaseModel):
+    """某供应商在此询价单上的完整调价历史"""
+    supplier_id: int
+    supplier_code: str
+    company_name: str
+    inquiry_id: int
+    inquiry_code: str
+    revisions: list[RevisionSnapshot] = []  # 按 version 升序
+
+
+# ============== AI 解析返回(不入库) ==============
+
+class ParsedRow(BaseModel):
+    """从附件 AI 解析出来的一行,前端会拿到后填 DOM"""
+    name: str
+    spec: str | None = None
+    unit: str = "个"
+    qty: Decimal | None = None
+    unit_price: Decimal
+    note: str | None = None
+
+
+class ParseAttachmentResult(BaseModel):
+    """/parse 端点返回 — 不入库,由前端渲染给供应商校对"""
+    ok: bool
+    attachment_id: int
+    parse_status: str                # done / failed
+    parse_note: str | None = None
+    rows: list[ParsedRow] = []       # 识别出的行(可能为空)
 
 
 # ============== 供应商端:填报价 ==============

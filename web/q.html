@@ -488,6 +488,11 @@ body {
         showMsg("info", "正在上传 " + file.name + "...");
         const fd = new FormData();
         fd.append("file", file);
+
+        let parsedRows = [];
+        let parseStatus = null;
+        let parseNote = "";
+
         try {
             const res = await fetch("/api/v1/public/quote/" + encodeURIComponent(token) + "/attachment", {
                 method: "POST", body: fd,
@@ -495,7 +500,8 @@ body {
             const d = await res.json();
             if (!res.ok) throw new Error(d.detail || "上传失败");
             showMsg("info", "已上传 " + d.filename + ",正在识别内容,请稍候...");
-            // 自动触发 AI 解析
+
+            // 调 parse 端点,它返回 rows 不入库
             try {
                 const pres = await fetch(
                     "/api/v1/public/quote/" + encodeURIComponent(token) + "/attachment/" + d.id + "/parse",
@@ -503,19 +509,40 @@ body {
                 );
                 const pdata = await pres.json();
                 if (pres.ok) {
-                    const att = (pdata.attachments || []).find(a => a.id === d.id);
-                    if (att && att.parse_status === "done") {
-                        showMsg("ok", "已识别" + (att.parse_note ? ":" + att.parse_note : "") + "。请核对下方「报价明细」内容,可继续补充或修改后提交。");
-                    } else if (att && att.parse_status === "failed") {
-                        showMsg("info", "附件已上传,但自动识别未能完成(" + (att.parse_note || "请手动填写") + ")。您可在下方手动填写明细。");
-                    } else {
-                        showMsg("ok", "附件已上传。可在下方补充报价明细,或再上传其他文件。");
-                    }
+                    parseStatus = pdata.parse_status;
+                    parseNote = pdata.parse_note || "";
+                    parsedRows = pdata.rows || [];
                 }
-            } catch (e) {
-                showMsg("ok", "附件已上传(自动识别跳过)。可在下方手动填写。");
+            } catch (e) { /* 静默 */ }
+
+            // 刷新视图(附件列表更新+解析状态)
+            await load();
+
+            // 把 AI 识别出来的 rows 追加到报价明细表格里(前端层,未入库)
+            if (parsedRows.length > 0) {
+                const box = document.getElementById("rowsBox");
+                if (box) {
+                    // 清掉当前空白行(避免"空行占位"挤着AI结果上方)
+                    Array.from(box.querySelectorAll("[data-row]")).forEach(row => {
+                        const name = row.querySelector('[name=name]').value.trim();
+                        const price = row.querySelector('[name=unit_price]').value.trim();
+                        if (!name && !price) row.remove();
+                    });
+                    parsedRows.forEach(r => {
+                        const div = document.createElement("div");
+                        div.innerHTML = rowTpl(Object.assign({}, r, { source: "ai_parsed" }), false);
+                        box.appendChild(div.firstElementChild);
+                    });
+                    recalc();
+                }
+                showMsg("ok", `已自动识别 ${parsedRows.length} 行,已填入下方「报价明细」。请核对无误后点击底部「提交报价」。`);
+            } else if (parseStatus === "failed") {
+                showMsg("info", `附件已上传,自动识别未能完成(${parseNote})。您可在下方手动填写明细。`);
+            } else if (parseStatus === "skipped") {
+                showMsg("ok", "附件已上传。可在下方手动填写明细后提交。");
+            } else {
+                showMsg("ok", "附件已上传。可在下方补充报价明细,或再上传其他文件。");
             }
-            load();  // 重新拉视图刷新附件列表+解析出的rows
         } catch (err) {
             showMsg("err", "上传失败: " + err.message);
         }

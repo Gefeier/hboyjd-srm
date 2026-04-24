@@ -477,6 +477,112 @@ body { background: var(--gray-50); }
         }));
     }
 
+    function openHistoryModal(hist, sup) {
+        const revs = hist.revisions || [];
+        const fmtDT = (iso) => iso ? iso.slice(0, 16).replace("T", " ") : "—";
+
+        // 按 (产品名 + 规格) 为 key,沉淀每版价格
+        const keyOf = (r) => (r.name || "") + "|" + (r.spec || "");
+        // 单价序列: key -> [{version, price, qty}]
+        const priceSeries = {};
+        revs.forEach(rev => {
+            rev.rows.forEach(r => {
+                const k = keyOf(r);
+                if (!priceSeries[k]) priceSeries[k] = [];
+                priceSeries[k].push({ version: rev.version, price: Number(r.unit_price), qty: r.qty });
+            });
+        });
+
+        // 涨跌符号
+        const trend = (cur, prev) => {
+            if (prev == null || cur == null) return "";
+            if (cur > prev) return ` <span style="color:#dc2626;font-size:11px">🔺+${((cur/prev - 1) * 100).toFixed(1)}%</span>`;
+            if (cur < prev) return ` <span style="color:#10b981;font-size:11px">🔻${((cur/prev - 1) * 100).toFixed(1)}%</span>`;
+            return ` <span style="color:#94a3b8;font-size:11px">═ 持平</span>`;
+        };
+
+        const versionsHtml = revs.map((rev, i) => {
+            const prev = i > 0 ? revs[i - 1] : null;
+            const deltaHtml = prev ? trend(Number(rev.total_amount), Number(prev.total_amount)) : "";
+            const rowsHtml = rev.rows.length ? rev.rows.map(r => {
+                const k = keyOf(r);
+                const ser = priceSeries[k] || [];
+                // 找当前版本在该行的历史
+                const myIdx = ser.findIndex(x => x.version === rev.version);
+                const prevOfItem = myIdx > 0 ? ser[myIdx - 1] : null;
+                const itemDelta = prevOfItem ? trend(Number(r.unit_price), prevOfItem.price) : "";
+                return `
+                    <tr>
+                        <td style="color:var(--navy-900);font-weight:500">${esc(r.name)}</td>
+                        <td style="color:var(--gray-600);font-size:12px">${esc(r.spec || "—")}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums">${r.qty != null ? Number(r.qty) + " " + esc(r.unit) : "<span style='color:var(--gray-400)'>—</span>"}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500">¥${fmtMoney(r.unit_price)}${itemDelta}</td>
+                    </tr>
+                `;
+            }).join("") : `<tr><td colspan="4" style="text-align:center;color:var(--gray-400);padding:14px">未提交明细</td></tr>`;
+
+            const sourceBadge = rev.source_summary === "ai_parsed"
+                ? '<span style="padding:2px 8px;background:#eff6ff;color:#1d4ed8;border-radius:999px;font-size:10px;margin-left:6px">含AI识别</span>'
+                : rev.source_summary === "mixed"
+                ? '<span style="padding:2px 8px;background:#fef3c7;color:#92400e;border-radius:999px;font-size:10px;margin-left:6px">混合</span>'
+                : rev.source_summary === "bootstrap"
+                ? '<span style="padding:2px 8px;background:#f1f5f9;color:#64748b;border-radius:999px;font-size:10px;margin-left:6px">历史迁入</span>'
+                : "";
+
+            return `
+                <div style="background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:16px 20px;margin-bottom:14px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div>
+                            <span style="font-size:15px;font-weight:600;color:var(--navy-900)">v${rev.version}</span>
+                            ${sourceBadge}
+                            <span style="margin-left:10px;color:var(--gray-500);font-size:12.5px">${fmtDT(rev.committed_at)}</span>
+                        </div>
+                        <div>
+                            <span style="font-size:12px;color:var(--gray-500)">总金额</span>
+                            <span style="font-size:17px;font-weight:600;color:var(--navy-900);font-variant-numeric:tabular-nums;margin-left:6px">¥${fmtMoney(rev.total_amount)}</span>
+                            ${deltaHtml}
+                        </div>
+                    </div>
+                    <table style="width:100%;border-collapse:collapse;font-size:13px">
+                        <thead>
+                            <tr style="background:var(--gray-50)">
+                                <th style="padding:8px 12px;text-align:left;font-weight:500;color:var(--gray-500);font-size:11px">产品</th>
+                                <th style="padding:8px 12px;text-align:left;font-weight:500;color:var(--gray-500);font-size:11px">规格</th>
+                                <th style="padding:8px 12px;text-align:right;font-weight:500;color:var(--gray-500);font-size:11px">数量</th>
+                                <th style="padding:8px 12px;text-align:right;font-weight:500;color:var(--gray-500);font-size:11px">单价</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+            `;
+        }).join("");
+
+        const mask = document.createElement("div");
+        mask.style.cssText = "position:fixed;inset:0;background:rgba(10,22,40,0.55);z-index:10000;padding:40px 20px;overflow-y:auto";
+        mask.innerHTML = `
+            <div style="max-width:900px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,0.3)">
+                <div style="padding:20px 28px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <h3 style="font-size:17px;font-weight:600;color:#0a1628">调价历史 · ${esc(sup.company_name)}</h3>
+                        <p style="font-size:12.5px;color:#64748b;margin-top:4px">共 ${revs.length} 次提交 · 按提交时间升序</p>
+                    </div>
+                    <button id="hxClose" style="background:transparent;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:0;width:32px;height:32px;border-radius:8px">&times;</button>
+                </div>
+                <div style="padding:18px 22px;max-height:calc(100vh - 180px);overflow-y:auto;background:#f8fafc">
+                    ${revs.length ? versionsHtml : '<div style="padding:40px;text-align:center;color:#94a3b8">该供应商尚未提交任何报价</div>'}
+                </div>
+            </div>
+        `;
+        document.body.appendChild(mask);
+        const close = () => mask.remove();
+        mask.querySelector("#hxClose").addEventListener("click", close);
+        mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
+        document.addEventListener("keydown", function onkey(e) {
+            if (e.key === "Escape") { close(); document.removeEventListener("keydown", onkey); }
+        });
+    }
+
     async function loadSupplierQuotes() {
         const box = document.getElementById("sqBox");
         if (!box) return;
@@ -542,6 +648,14 @@ body { background: var(--gray-50); }
             // 复制填报链接按钮(从外层 d.invites 找 token)
             const invites = (window.__d && window.__d.invites) || [];
             const invite = invites.find(v => v.supplier_id === s.supplier_id);
+            // 调价历史按钮(至少1版时显示)
+            const historyBtnHtml = (s.revision_count && s.revision_count >= 1) ? `
+                <button class="sq-link-btn" data-history="${s.supplier_id}" title="查看调价历史">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    调价历史 ${s.revision_count > 1 ? "v" + s.current_version : ""}
+                </button>
+            ` : "";
+
             const linkBtnHtml = (invite && window.__d && window.__d.status !== "closed") ? `
                 <button class="sq-link-btn" data-copy-link="${invite.token}" title="复制填报链接发给供应商">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
@@ -559,7 +673,7 @@ body { background: var(--gray-50); }
                             <div class="sq-name">${esc(s.company_name)}</div>
                             <div class="sq-meta">${esc(s.supplier_code)}${s.contact_phone ? " · " + esc(s.contact_phone) : ""} · ${s.quoted_at ? "提交于 " + fmtDateTime(s.quoted_at) : "尚未提交"}</div>
                         </div>
-                        <div class="sq-right">${badge}${linkBtnHtml}${awardBtnHtml}</div>
+                        <div class="sq-right">${badge}${historyBtnHtml}${linkBtnHtml}${awardBtnHtml}</div>
                     </div>
                     <div class="sq-body">
                         ${s.rows.length ? `
@@ -650,6 +764,18 @@ body { background: var(--gray-50); }
         }));
         box.querySelectorAll("[data-open-link]").forEach(btn => btn.addEventListener("click", () => {
             window.open("/q.html?t=" + encodeURIComponent(btn.dataset.openLink), "_blank");
+        }));
+
+        // 调价历史弹窗
+        box.querySelectorAll("[data-history]").forEach(btn => btn.addEventListener("click", async () => {
+            const sid = parseInt(btn.dataset.history);
+            const sup = data.suppliers.find(s => s.supplier_id === sid);
+            try {
+                const res = await srmFetch(`/api/v1/inquiries/${inquiryId}/supplier-quotes/${sid}/history`);
+                if (!res.ok) throw new Error((await res.json()).detail || "加载失败");
+                const hist = await res.json();
+                openHistoryModal(hist, sup);
+            } catch (err) { alert("调价历史加载失败: " + err.message); }
         }));
 
         // 绑定定标按钮

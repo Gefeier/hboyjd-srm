@@ -14,7 +14,7 @@ from sqlmodel import Session, select
 from app.db import get_session
 from app.deps import get_current_supplier, get_current_user, require_buyer_or_admin
 from app.models.inquiry import Inquiry, InquiryInvite, InquiryItem, InquiryStatus, QuoteLine
-from app.models.quote import QuoteAttachment, QuoteRow
+from app.models.quote import QuoteAttachment, QuoteRevision, QuoteRow
 from app.models.supplier import Supplier, SupplierStatus
 from app.models.user import User
 from app.schemas.inquiry import (
@@ -32,6 +32,9 @@ from app.schemas.inquiry import (
     MyInquiryItem,
     MyQuoteSubmit,
     QuoteLineRead,
+    RevisionRow,
+    RevisionSnapshot,
+    SupplierHistoryResponse,
     SupplierMini,
     SupplierQuoteDetail,
 )
@@ -289,11 +292,27 @@ def get_supplier_quotes(
         sup = suppliers_by_id.get(inv.supplier_id)
         if not sup:
             continue
-        rows = session.exec(
-            select(QuoteRow)
-            .where(QuoteRow.inquiry_id == inquiry_id, QuoteRow.supplier_id == sup.id)
-            .order_by(QuoteRow.sort_order, QuoteRow.id)
-        ).all()
+        # 取该供应商最新 revision 的 rows
+        latest_rev = session.exec(
+            select(QuoteRevision)
+            .where(QuoteRevision.inquiry_id == inquiry_id, QuoteRevision.supplier_id == sup.id)
+            .order_by(QuoteRevision.version.desc())
+            .limit(1)
+        ).first()
+        rev_count = session.exec(
+            select(func.count()).select_from(QuoteRevision).where(
+                QuoteRevision.inquiry_id == inquiry_id,
+                QuoteRevision.supplier_id == sup.id,
+            )
+        ).one()
+        if latest_rev:
+            rows = session.exec(
+                select(QuoteRow)
+                .where(QuoteRow.revision_id == latest_rev.id)
+                .order_by(QuoteRow.sort_order, QuoteRow.id)
+            ).all()
+        else:
+            rows = []
         atts = session.exec(
             select(QuoteAttachment)
             .where(QuoteAttachment.inquiry_id == inquiry_id, QuoteAttachment.supplier_id == sup.id)
@@ -315,6 +334,8 @@ def get_supplier_quotes(
             attachments=[AdminAttachment.model_validate(a) for a in atts],
             total_amount=total,
             row_count=len(rows),
+            revision_count=rev_count,
+            current_version=latest_rev.version if latest_rev else None,
         ))
 
     # 按已报价+总金额排序
@@ -324,6 +345,64 @@ def get_supplier_quotes(
         inquiry_id=inquiry.id,
         inquiry_code=inquiry.code,
         suppliers=result,
+    )
+
+
+@router.get("/{inquiry_id}/supplier-quotes/{supplier_id}/history", response_model=SupplierHistoryResponse)
+def get_supplier_history(
+    inquiry_id: int,
+    supplier_id: int,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_user),
+) -> SupplierHistoryResponse:
+    """某供应商在此询价单的所有提交版本(调价历史)"""
+    inquiry = session.get(Inquiry, inquiry_id)
+    if not inquiry:
+        raise HTTPException(404, "询价单不存在")
+    supplier = session.get(Supplier, supplier_id)
+    if not supplier:
+        raise HTTPException(404, "供应商不存在")
+    # 确认该供应商确实被邀
+    invite = session.exec(
+        select(InquiryInvite).where(
+            InquiryInvite.inquiry_id == inquiry_id,
+            InquiryInvite.supplier_id == supplier_id,
+        )
+    ).first()
+    if not invite:
+        raise HTTPException(400, "该供应商未被邀请至此询价单")
+
+    revisions = session.exec(
+        select(QuoteRevision)
+        .where(QuoteRevision.inquiry_id == inquiry_id, QuoteRevision.supplier_id == supplier_id)
+        .order_by(QuoteRevision.version.asc())
+    ).all()
+
+    snapshots = []
+    for rev in revisions:
+        rows = session.exec(
+            select(QuoteRow)
+            .where(QuoteRow.revision_id == rev.id)
+            .order_by(QuoteRow.sort_order, QuoteRow.id)
+        ).all()
+        snapshots.append(RevisionSnapshot(
+            id=rev.id,
+            version=rev.version,
+            committed_at=rev.committed_at,
+            total_amount=rev.total_amount,
+            row_count=rev.row_count,
+            source_summary=rev.source_summary,
+            has_attachment=bool(rev.has_attachment),
+            rows=[RevisionRow.model_validate(r) for r in rows],
+        ))
+
+    return SupplierHistoryResponse(
+        supplier_id=supplier.id,
+        supplier_code=supplier.code,
+        company_name=supplier.company_name,
+        inquiry_id=inquiry.id,
+        inquiry_code=inquiry.code,
+        revisions=snapshots,
     )
 
 

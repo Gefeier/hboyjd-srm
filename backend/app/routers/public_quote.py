@@ -1,9 +1,10 @@
 """Magic link 公开填报 API — 供应商拿链接直接填,不用注册登录
 
-方式4混合模型:
-- 供应商可以手填报价清单(rows)
-- 也可以上传 PDF/Excel/图片 → (未来)AI 自动解析成 rows
-- 支持同时存在,供应商校对
+版本化模型(v3):
+- 每次 PUT /quote 创建一个 QuoteRevision,rows 挂其下
+- 视图默认返回最新 revision 的 rows(作为编辑起点)
+- 历史版本保留,采购员可查调价轨迹
+- /parse 不再入库,只返回 rows 数据让前端填表,供应商校对后提交才入库
 
 安全:
 - token 32字节 URL-safe 随机,每家独立
@@ -21,15 +22,16 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy import func as sa_func
 from sqlmodel import Session, select
 
 from app import llm
 from app.db import get_session
 from app.models.inquiry import Inquiry, InquiryInvite, InquiryItem, InquiryStatus, QuoteLine
-from app.models.quote import QuoteAttachment, QuoteRow, QuoteRowSource
+from app.models.quote import QuoteAttachment, QuoteRevision, QuoteRow, QuoteRowSource
 from app.models.supplier import Supplier
 from app.schemas.inquiry import (
+    ParseAttachmentResult,
+    ParsedRow,
     PublicAttachmentRead,
     PublicInquiryItem,
     PublicQuoteRow,
@@ -39,17 +41,16 @@ from app.schemas.inquiry import (
 
 router = APIRouter(prefix="/public/quote", tags=["public-quote"])
 
-# 文件存储根目录 (docker volume mount 到 /app/uploads)
 UPLOAD_ROOT = Path(os.environ.get("SRM_UPLOAD_ROOT", "/app/uploads"))
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_MIMES = {
     "application/pdf",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # xlsx
-    "application/vnd.ms-excel",  # xls
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
     "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # docx
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "image/jpeg", "image/png", "image/webp", "image/gif",
     "text/csv", "text/plain",
 }
@@ -62,6 +63,29 @@ def _load_invite_by_token(session: Session, token: str) -> InquiryInvite:
     if not invite:
         raise HTTPException(404, "链接无效或已过期")
     return invite
+
+
+def _latest_revision(session: Session, inquiry_id: int, supplier_id: int) -> QuoteRevision | None:
+    return session.exec(
+        select(QuoteRevision)
+        .where(
+            QuoteRevision.inquiry_id == inquiry_id,
+            QuoteRevision.supplier_id == supplier_id,
+        )
+        .order_by(QuoteRevision.version.desc())
+        .limit(1)
+    ).first()
+
+
+def _latest_rows(session: Session, inquiry_id: int, supplier_id: int) -> list[QuoteRow]:
+    rev = _latest_revision(session, inquiry_id, supplier_id)
+    if not rev:
+        return []
+    return session.exec(
+        select(QuoteRow)
+        .where(QuoteRow.revision_id == rev.id)
+        .order_by(QuoteRow.sort_order, QuoteRow.id)
+    ).all()
 
 
 def _build_view(session: Session, invite: InquiryInvite) -> PublicQuoteView:
@@ -95,18 +119,10 @@ def _build_view(session: Session, invite: InquiryInvite) -> PublicQuoteView:
             my_note=line.note if line else None,
         ))
 
-    # 方式4:供应商自己列的行
-    rows = session.exec(
-        select(QuoteRow)
-        .where(
-            QuoteRow.inquiry_id == inquiry.id,
-            QuoteRow.supplier_id == supplier.id,
-        )
-        .order_by(QuoteRow.sort_order, QuoteRow.id)
-    ).all()
+    # 方式4:最新 revision 的 rows 作为编辑起点
+    rows = _latest_rows(session, inquiry.id, supplier.id)
     row_views = [PublicQuoteRow.model_validate(r) for r in rows]
 
-    # 附件
     atts = session.exec(
         select(QuoteAttachment)
         .where(
@@ -145,7 +161,9 @@ def submit_quote(
     request: Request,
     session: Session = Depends(get_session),
 ) -> PublicQuoteView:
-    """提交报价 — 方式4: rows 覆盖式;方式1兼容: preset_quotes 对应 InquiryItem"""
+    """提交报价 — 每次创建新 QuoteRevision 快照。
+    方式1兼容:preset_quotes 对应 InquiryItem 单独走 QuoteLine 表。
+    """
     invite = _load_invite_by_token(session, token)
     inquiry = session.get(Inquiry, invite.inquiry_id)
     if not inquiry:
@@ -154,20 +172,16 @@ def submit_quote(
         raise HTTPException(400, "此询价单已关闭,无法再修改报价")
 
     now = datetime.now(UTC)
-    submitted_any = False
+    ip = request.client.host if request.client else None
+    submitted_rows = False
+    submitted_preset = False
 
-    # 方式4:覆盖式更新 rows
+    # ========== 方式4:创建新 revision + 插入 rows ==========
     if payload.rows:
-        # 先清旧
-        old_rows = session.exec(
-            select(QuoteRow).where(
-                QuoteRow.inquiry_id == inquiry.id,
-                QuoteRow.supplier_id == invite.supplier_id,
-            )
-        ).all()
-        for r in old_rows:
-            session.delete(r)
-        # 再插新
+        # 规整化 + 计算合计
+        valid_rows = []
+        total = Decimal("0")
+        sources = set()
         for idx, row in enumerate(payload.rows):
             if not row.name or not row.name.strip():
                 continue
@@ -175,21 +189,64 @@ def submit_quote(
                 src = QuoteRowSource(row.source) if row.source else QuoteRowSource.MANUAL
             except ValueError:
                 src = QuoteRowSource.MANUAL
+            sources.add(src.value)
+            qty = row.qty
+            price = row.unit_price
+            if qty is not None and qty > 0:
+                total += qty * price
+            else:
+                total += price
+            valid_rows.append((idx, row, src))
+
+        if not valid_rows:
+            raise HTTPException(400, "报价行全部为空,请至少填写一行")
+
+        # 版本号:现有最大 +1
+        latest = _latest_revision(session, inquiry.id, invite.supplier_id)
+        new_version = (latest.version + 1) if latest else 1
+
+        source_summary = (
+            list(sources)[0] if len(sources) == 1 else "mixed"
+        )
+
+        has_att = session.exec(
+            select(QuoteAttachment).where(
+                QuoteAttachment.inquiry_id == inquiry.id,
+                QuoteAttachment.supplier_id == invite.supplier_id,
+            )
+        ).first() is not None
+
+        rev = QuoteRevision(
+            inquiry_id=inquiry.id,
+            supplier_id=invite.supplier_id,
+            version=new_version,
+            committed_at=now,
+            total_amount=total,
+            row_count=len(valid_rows),
+            source_summary=source_summary,
+            has_attachment=has_att,
+            client_ip=ip,
+        )
+        session.add(rev)
+        session.flush()  # 拿到 rev.id
+
+        for idx, row, src in valid_rows:
             session.add(QuoteRow(
                 inquiry_id=inquiry.id,
                 supplier_id=invite.supplier_id,
-                name=row.name.strip(),
-                spec=row.spec,
-                unit=row.unit or "个",
+                revision_id=rev.id,
+                name=row.name.strip()[:128],
+                spec=(row.spec or "").strip()[:256] or None,
+                unit=(row.unit or "个").strip()[:16] or "个",
                 qty=row.qty,
                 unit_price=row.unit_price,
-                note=row.note,
+                note=(row.note or "").strip()[:256] or None,
                 source=src,
                 sort_order=idx,
             ))
-        submitted_any = True
+        submitted_rows = True
 
-    # 方式1:填预设 InquiryItem 的单价
+    # ========== 方式1兼容:preset_quotes(采购员预设物料) ==========
     if payload.preset_quotes:
         items = session.exec(
             select(InquiryItem).where(InquiryItem.inquiry_id == inquiry.id)
@@ -221,10 +278,10 @@ def submit_quote(
                     unit_price=pq.unit_price,
                     note=pq.note,
                 ))
-        submitted_any = True
+        submitted_preset = True
 
-    if not submitted_any:
-        # 允许"只上传附件不填 rows"吗?是的 — 仅当已有附件时
+    if not submitted_rows and not submitted_preset:
+        # 允许"只上传附件不填 rows"仅当已有附件时 — 此分支不新建 revision
         have_att = session.exec(
             select(QuoteAttachment).where(
                 QuoteAttachment.inquiry_id == inquiry.id,
@@ -237,22 +294,24 @@ def submit_quote(
     if not invite.quoted_at:
         invite.quoted_at = now
         session.add(invite)
+    else:
+        # 二次及以上提交也更新时间(便于列表看"最新提交时间")
+        invite.quoted_at = now
+        session.add(invite)
 
     session.commit()
 
-    ip = request.client.host if request.client else "?"
     print(f"[public-quote] submit token={token[:8]}... inquiry={inquiry.code} "
-          f"supplier_id={invite.supplier_id} rows={len(payload.rows)} preset={len(payload.preset_quotes)} ip={ip}",
-          flush=True)
+          f"supplier_id={invite.supplier_id} rows_submitted={submitted_rows} "
+          f"preset_submitted={submitted_preset} ip={ip}", flush=True)
 
     session.refresh(invite)
     return _build_view(session, invite)
 
 
-# ============== 附件上传 ==============
+# ============== 附件上传/下载/删除 ==============
 
 def _safe_filename(name: str) -> str:
-    """去掉路径分隔符等危险字符"""
     bad = "/\\:*?\"<>|\0"
     cleaned = "".join(c for c in name if c not in bad).strip()
     return cleaned[:200] or "upload"
@@ -272,19 +331,16 @@ async def upload_attachment(
     if inquiry.status == InquiryStatus.CLOSED:
         raise HTTPException(400, "此询价单已关闭,无法再上传附件")
 
-    # MIME 检查
     mime = file.content_type or mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"
     if mime not in ALLOWED_MIMES:
         raise HTTPException(400, f"不支持的文件类型: {mime}。允许 PDF/Excel/Word/图片/CSV")
 
-    # 读文件 + 大小检查
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(400, f"文件过大,最大 {MAX_FILE_SIZE // 1024 // 1024} MB")
     if len(content) == 0:
         raise HTTPException(400, "空文件")
 
-    # 写盘
     rel_dir = f"quote/{inquiry.id}/{invite.supplier_id}"
     disk_dir = UPLOAD_ROOT / rel_dir
     disk_dir.mkdir(parents=True, exist_ok=True)
@@ -330,7 +386,6 @@ def delete_attachment(
     inquiry = session.get(Inquiry, invite.inquiry_id)
     if inquiry and inquiry.status == InquiryStatus.CLOSED:
         raise HTTPException(400, "此询价单已关闭,无法删除附件")
-    # 删文件(忽略文件系统错误,数据库记录是主源)
     try:
         disk_path = UPLOAD_ROOT / att.storage_path
         if disk_path.exists():
@@ -347,9 +402,6 @@ def download_attachment(
     attachment_id: int,
     session: Session = Depends(get_session),
 ):
-    """供应商/采购员都能下载自己(或自家)的附件
-    — 为了简化,public 入口只要 token 对就能下;采购员有另一条带 auth 的路径
-    """
     invite = _load_invite_by_token(session, token)
     att = session.get(QuoteAttachment, attachment_id)
     if not att or att.inquiry_id != invite.inquiry_id or att.supplier_id != invite.supplier_id:
@@ -364,28 +416,33 @@ def download_attachment(
     )
 
 
-@router.post("/{token}/attachment/{attachment_id}/parse", response_model=PublicQuoteView)
+# ============== AI 解析 — 不再入库,返回数据给前端渲染 ==============
+
+@router.post("/{token}/attachment/{attachment_id}/parse", response_model=ParseAttachmentResult)
 def parse_attachment_endpoint(
     token: str,
     attachment_id: int,
     session: Session = Depends(get_session),
-) -> PublicQuoteView:
-    """用 MiniMax 解析附件 → 提取物料报价行 → 插入 QuoteRow(source=ai_parsed)"""
+) -> ParseAttachmentResult:
+    """调 MiniMax 解析附件 → 返回 rows 数据给前端渲染。
+    不入库 — 供应商校对后点"提交报价"才会落版本。
+    """
     invite = _load_invite_by_token(session, token)
     att = session.get(QuoteAttachment, attachment_id)
     if not att or att.inquiry_id != invite.inquiry_id or att.supplier_id != invite.supplier_id:
         raise HTTPException(404, "附件不存在")
 
-    # 未配 key → 降级占位
     if not llm.is_configured():
         att.parse_status = "skipped"
-        att.parse_note = "AI 解析暂未配置,请在下方手动填写明细。"
+        att.parse_note = "AI 解析暂未配置,请手动填写明细。"
         att.parsed_at = datetime.now(UTC)
         session.add(att)
         session.commit()
-        return _build_view(session, invite)
+        return ParseAttachmentResult(
+            ok=False, attachment_id=att.id,
+            parse_status=att.parse_status, parse_note=att.parse_note,
+        )
 
-    # 标记正在解析
     att.parse_status = "parsing"
     session.add(att)
     session.commit()
@@ -399,44 +456,23 @@ def parse_attachment_endpoint(
         att.parsed_at = datetime.now(UTC)
         session.add(att)
         session.commit()
-        return _build_view(session, invite)
-
-    rows = result.get("rows") or []
-
-    # 清掉旧的 ai_parsed 行(保留 manual),重插
-    old_ai = session.exec(
-        select(QuoteRow).where(
-            QuoteRow.inquiry_id == invite.inquiry_id,
-            QuoteRow.supplier_id == invite.supplier_id,
-            QuoteRow.source == QuoteRowSource.AI_PARSED,
+        return ParseAttachmentResult(
+            ok=False, attachment_id=att.id,
+            parse_status="failed", parse_note=att.parse_note,
         )
-    ).all()
-    for r in old_ai:
-        session.delete(r)
-    session.flush()
 
-    # 取当前 manual 行的最大 sort_order,AI 行接在后面
-    cur_max = session.exec(
-        select(sa_func.max(QuoteRow.sort_order)).where(
-            QuoteRow.inquiry_id == invite.inquiry_id,
-            QuoteRow.supplier_id == invite.supplier_id,
-        )
-    ).one()
-    base = (cur_max or 0) + 1
-
-    inserted = 0
-    for idx, r in enumerate(rows):
+    raw_rows = result.get("rows") or []
+    parsed: list[ParsedRow] = []
+    for r in raw_rows:
         name = (r.get("name") or "").strip()
         if not name:
             continue
-        # 单价必填
         try:
             price = Decimal(str(r.get("unit_price")))
             if price <= 0:
                 continue
         except (InvalidOperation, TypeError):
             continue
-        # 数量可选
         qty = None
         if r.get("qty") is not None:
             try:
@@ -445,27 +481,29 @@ def parse_attachment_endpoint(
                     qty = None
             except (InvalidOperation, TypeError):
                 qty = None
-        session.add(QuoteRow(
-            inquiry_id=invite.inquiry_id,
-            supplier_id=invite.supplier_id,
+        parsed.append(ParsedRow(
             name=name[:128],
-            spec=((r.get("spec") or "").strip() or None),
+            spec=(r.get("spec") or "").strip()[:256] or None,
             unit=(r.get("unit") or "个").strip()[:16] or "个",
             qty=qty,
             unit_price=price,
-            note=((r.get("note") or "").strip() or None),
-            source=QuoteRowSource.AI_PARSED,
-            sort_order=base + idx,
+            note=(r.get("note") or "").strip()[:256] or None,
         ))
-        inserted += 1
 
-    att.parse_status = "done" if inserted > 0 else "failed"
-    att.parse_note = f"成功识别 {inserted} 行" if inserted else "未能识别出任何有效报价行,请手动填写"
+    ok = len(parsed) > 0
+    att.parse_status = "done" if ok else "failed"
+    att.parse_note = f"识别出 {len(parsed)} 行,请核对后提交" if ok else "未能识别出任何有效报价行,请手动填写"
     att.parsed_at = datetime.now(UTC)
     session.add(att)
     session.commit()
 
     print(f"[llm-parse] attachment={attachment_id} mime={att.mime_type} "
-          f"extracted={len(rows)} inserted={inserted}", flush=True)
+          f"rows={len(raw_rows)} valid={len(parsed)}", flush=True)
 
-    return _build_view(session, invite)
+    return ParseAttachmentResult(
+        ok=ok,
+        attachment_id=att.id,
+        parse_status=att.parse_status,
+        parse_note=att.parse_note,
+        rows=parsed,
+    )

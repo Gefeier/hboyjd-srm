@@ -27,17 +27,45 @@ class QuoteRowSource(StrEnum):
     ADMIN = "admin"            # 采购员代填
 
 
-class QuoteRow(SQLModel, table=True):
-    """供应商的报价行(自由清单,每家填啥是啥)"""
-    __tablename__ = "quote_row"
+class QuoteRevision(SQLModel, table=True):
+    """一次供应商提交(快照) — 每次 PUT 创建新 revision,rows 挂其下
+    可追溯供应商的调价轨迹
+    """
+    __tablename__ = "quote_revision"
     __table_args__ = (
-        Index("ix_qrow_inquiry_supplier", "inquiry_id", "supplier_id"),
-        Index("ix_qrow_supplier_inquiry", "supplier_id", "inquiry_id"),
+        Index("ix_qrev_supplier_inquiry", "supplier_id", "inquiry_id"),
+        Index("ix_qrev_inquiry", "inquiry_id"),
     )
 
     id: int | None = Field(default=None, primary_key=True)
     inquiry_id: int = Field(sa_column=Column(Integer, ForeignKey("inquiry.id", ondelete="CASCADE"), nullable=False))
     supplier_id: int = Field(sa_column=Column(Integer, ForeignKey("supplier.id", ondelete="CASCADE"), nullable=False))
+    version: int = Field(sa_column=Column(Integer, nullable=False))  # 该对组合的第几版(1,2,3...)
+    committed_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=utcnow),
+    )
+    total_amount: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(16, 2), nullable=False, server_default="0"))
+    row_count: int = Field(default=0, sa_column=Column(Integer, nullable=False, server_default="0"))
+    source_summary: str = Field(default="manual", sa_column=Column(String(32), nullable=False, server_default="manual"))  # manual/ai_parsed/mixed/bootstrap
+    has_attachment: bool = Field(default=False, sa_column=Column(Integer, nullable=False, server_default="0"))
+    # 提交时客户端 IP(审计)
+    client_ip: str | None = Field(default=None, sa_column=Column(String(64), nullable=True))
+
+
+class QuoteRow(SQLModel, table=True):
+    """供应商报价行 — 挂在某个 revision 下,revision_id 必填"""
+    __tablename__ = "quote_row"
+    __table_args__ = (
+        Index("ix_qrow_inquiry_supplier", "inquiry_id", "supplier_id"),
+        Index("ix_qrow_supplier_inquiry", "supplier_id", "inquiry_id"),
+        Index("ix_qrow_revision", "revision_id"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    inquiry_id: int = Field(sa_column=Column(Integer, ForeignKey("inquiry.id", ondelete="CASCADE"), nullable=False))
+    supplier_id: int = Field(sa_column=Column(Integer, ForeignKey("supplier.id", ondelete="CASCADE"), nullable=False))
+    revision_id: int = Field(sa_column=Column(Integer, ForeignKey("quote_revision.id", ondelete="CASCADE"), nullable=False))
 
     name: str = Field(sa_column=Column(String(128), nullable=False))
     spec: str | None = Field(default=None, sa_column=Column(String(256), nullable=True))
