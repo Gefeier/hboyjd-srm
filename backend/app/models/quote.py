@@ -75,7 +75,7 @@ class QuoteAttachment(SQLModel, table=True):
     filename: str = Field(sa_column=Column(String(256), nullable=False))  # 原始文件名
     storage_path: str = Field(sa_column=Column(String(512), nullable=False))  # 服务器相对路径
     file_size: int = Field(sa_column=Column(Integer, nullable=False))
-    mime_type: str = Field(sa_column=Column(String(64), nullable=False))
+    mime_type: str = Field(sa_column=Column(String(128), nullable=False))
 
     # AI 解析状态
     parse_status: str = Field(
