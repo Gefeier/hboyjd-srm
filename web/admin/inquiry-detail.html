@@ -274,7 +274,8 @@ body { background: var(--gray-50); }
             : "";
 
         const actionsHtml = d.status === "open"
-            ? `<button class="action-btn" id="copyLinkBtn" title="复制供应商端入口"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>复制邀请链接</button>
+            ? `<button class="action-btn" id="editBtn" title="编辑标题/说明/交期/地址"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>编辑</button>
+               <button class="action-btn" id="copyLinkBtn" title="复制供应商端入口"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>复制邀请链接</button>
                <button class="action-btn danger" id="closeBtn">关闭比价单</button>`
             : "";
 
@@ -419,6 +420,9 @@ body { background: var(--gray-50); }
         loadSupplierQuotes();
 
         // 绑定操作
+        const editBtn = document.getElementById("editBtn");
+        if (editBtn) editBtn.addEventListener("click", () => openEditModal(d));
+
         const closeBtn = document.getElementById("closeBtn");
         if (closeBtn) closeBtn.addEventListener("click", async () => {
             if (!confirm("关闭后供应商无法再修改报价,确认关闭吗?")) return;
@@ -475,6 +479,81 @@ body { background: var(--gray-50); }
             const tk = btn.dataset.openLink;
             window.open("/q.html?t=" + encodeURIComponent(tk), "_blank");
         }));
+    }
+
+    function openEditModal(d) {
+        const mask = document.createElement("div");
+        mask.style.cssText = "position:fixed;inset:0;background:rgba(10,22,40,0.55);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:60px 20px;overflow-y:auto";
+        mask.innerHTML = `
+            <div style="background:#fff;border-radius:16px;max-width:580px;width:100%;box-shadow:0 40px 80px rgba(0,0,0,0.3);overflow:hidden">
+                <div style="padding:20px 26px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+                    <h3 style="font-size:16px;font-weight:600;color:#0a1628">编辑询价单 · ${esc(d.code)}</h3>
+                    <button id="edClose" style="background:transparent;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:0;width:32px;height:32px">&times;</button>
+                </div>
+                <div style="padding:22px 26px">
+                    <div id="edErr" style="display:none;padding:10px 14px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;font-size:13px;margin-bottom:14px"></div>
+                    <div style="margin-bottom:14px">
+                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">询价单标题 <span style="color:#94a3b8;font-weight:400">(供应商可见)</span></label>
+                        <input id="edTitle" type="text" value="${esc(d.title || "")}" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;font-family:inherit">
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+                        <div>
+                            <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">要求交期</label>
+                            <input id="edDate" type="text" value="${esc(d.delivery_date || "")}" placeholder="如:30天内" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;font-family:inherit">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">交货地址</label>
+                            <input id="edAddr" type="text" value="${esc(d.delivery_address || "")}" placeholder="湖北省枣阳市发展大道23号(G316)" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;font-family:inherit">
+                        </div>
+                    </div>
+                    <div style="margin-bottom:14px">
+                        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">需求说明 <span style="color:#94a3b8;font-weight:400">(供应商可见)</span></label>
+                        <textarea id="edRemark" style="width:100%;min-height:80px;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical">${esc(d.remark || "")}</textarea>
+                    </div>
+                    <div style="font-size:11.5px;color:#94a3b8;line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px">
+                        💡 此处只能改基本信息。物料清单、邀请的供应商不在此处修改 — 如需调整请删单重建,或联系开发。
+                    </div>
+                </div>
+                <div style="padding:14px 26px;border-top:1px solid #f1f5f9;background:#f8fafc;display:flex;justify-content:flex-end;gap:10px">
+                    <button id="edCancel" style="padding:9px 18px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;cursor:pointer;font-family:inherit">取消</button>
+                    <button id="edSave" style="padding:9px 22px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit">保存修改</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(mask);
+        const close = () => mask.remove();
+        mask.querySelector("#edClose").addEventListener("click", close);
+        mask.querySelector("#edCancel").addEventListener("click", close);
+        mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
+
+        mask.querySelector("#edSave").addEventListener("click", async () => {
+            const errEl = mask.querySelector("#edErr");
+            errEl.style.display = "none";
+            const title = mask.querySelector("#edTitle").value.trim();
+            if (!title || title.length < 2) {
+                errEl.textContent = "标题至少 2 个字"; errEl.style.display = "block"; return;
+            }
+            const body = {
+                title,
+                remark: mask.querySelector("#edRemark").value.trim() || null,
+                delivery_date: mask.querySelector("#edDate").value.trim() || null,
+                delivery_address: mask.querySelector("#edAddr").value.trim() || null,
+            };
+            const btn = mask.querySelector("#edSave");
+            btn.disabled = true; btn.textContent = "保存中...";
+            try {
+                const res = await srmFetch(`/api/v1/inquiries/${inquiryId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify(body),
+                });
+                if (!res.ok) throw new Error((await res.json()).detail || "保存失败");
+                close();
+                load();
+            } catch (err) {
+                errEl.textContent = err.message; errEl.style.display = "block";
+                btn.disabled = false; btn.textContent = "保存修改";
+            }
+        });
     }
 
     function openHistoryModal(hist, sup) {

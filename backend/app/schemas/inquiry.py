@@ -107,6 +107,14 @@ class InquiryAwardRequest(BaseModel):
     note: str | None = None
 
 
+class InquiryUpdate(BaseModel):
+    """编辑询价单 — 只改基本信息(物料和邀请名单不在此处改)"""
+    title: str | None = Field(default=None, min_length=2, max_length=128)
+    remark: str | None = Field(default=None, max_length=2000)
+    delivery_date: str | None = Field(default=None, max_length=32)
+    delivery_address: str | None = Field(default=None, max_length=256)
+
+
 # ============== 采购员端:看每家的报价详情(方式4) ==============
 
 class AdminQuoteRow(BaseModel):

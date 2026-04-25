@@ -23,6 +23,7 @@ from app.schemas.inquiry import (
     InquiryAwardRequest,
     InquiryCreate,
     InquiryDetail,
+    InquiryUpdate,
     InquiryItemRead,
     InquiryListResponse,
     InquiryRead,
@@ -214,6 +215,39 @@ def get_inquiry(
     session: Session = Depends(get_session),
     _: User = Depends(get_current_user),
 ) -> InquiryDetail:
+    return _load_detail(inquiry_id, session)
+
+
+@router.patch("/{inquiry_id}", response_model=InquiryDetail)
+def update_inquiry(
+    inquiry_id: int,
+    payload: InquiryUpdate,
+    session: Session = Depends(get_session),
+    _: User = Depends(require_buyer_or_admin),
+) -> InquiryDetail:
+    """编辑询价单基本信息(标题/说明/交期/地址)。物料和邀请名单不在此处改。"""
+    inquiry = session.get(Inquiry, inquiry_id)
+    if not inquiry:
+        raise HTTPException(404, "询价单不存在")
+    if inquiry.status == InquiryStatus.CLOSED:
+        raise HTTPException(400, "已关闭的询价单不可修改")
+
+    data = payload.model_dump(exclude_unset=True)
+    if not data:
+        raise HTTPException(400, "未提供任何修改内容")
+
+    if "title" in data and data["title"]:
+        inquiry.title = data["title"].strip()
+    if "remark" in data:
+        inquiry.remark = data["remark"]
+    if "delivery_date" in data:
+        inquiry.delivery_date = data["delivery_date"]
+    if "delivery_address" in data:
+        inquiry.delivery_address = data["delivery_address"]
+    inquiry.updated_at = datetime.now(UTC)
+
+    session.add(inquiry)
+    session.commit()
     return _load_detail(inquiry_id, session)
 
 
