@@ -18,9 +18,10 @@ class InquiryItemCreate(BaseModel):
 
 class InquiryCreate(BaseModel):
     title: str = Field(min_length=2, max_length=128)
-    remark: str | None = Field(default=None, max_length=2000)
+    remark: str | None = Field(default=None, max_length=4000)  # 详细需求说明 — 多行
     delivery_date: str | None = Field(default=None, max_length=32)
     delivery_address: str | None = Field(default=None, max_length=256)
+    quote_deadline: datetime | None = None  # 报价截止时间(可空)
     # items 可选 — 方式4混合型:采购员可不列,让供应商自己报
     items: list[InquiryItemCreate] = Field(default_factory=list)
     supplier_ids: list[int] = Field(min_length=1)
@@ -76,6 +77,7 @@ class InquiryRead(BaseModel):
     status: InquiryStatus
     delivery_date: str | None = None
     delivery_address: str | None = None
+    quote_deadline: datetime | None = None
     awarded_supplier_id: int | None = None
     awarded_supplier_name: str | None = None
     closed_at: datetime | None = None
@@ -110,9 +112,10 @@ class InquiryAwardRequest(BaseModel):
 class InquiryUpdate(BaseModel):
     """编辑询价单 — 只改基本信息(物料和邀请名单不在此处改)"""
     title: str | None = Field(default=None, min_length=2, max_length=128)
-    remark: str | None = Field(default=None, max_length=2000)
+    remark: str | None = Field(default=None, max_length=4000)
     delivery_date: str | None = Field(default=None, max_length=32)
     delivery_address: str | None = Field(default=None, max_length=256)
+    quote_deadline: datetime | None = None  # null 表示清除截止;不传(unset)则不改
 
 
 # ============== 采购员端:看每家的报价详情(方式4) ==============
@@ -310,6 +313,8 @@ class PublicQuoteView(BaseModel):
     title: str
     remark: str | None = None
     delivery_date: str | None = None
+    quote_deadline: datetime | None = None  # 报价截止时间(可空)
+    is_expired: bool = False                # 服务端按 now > deadline 计算,前端无需自己判断
     buyer_company_name: str = "湖北欧阳聚德汽车有限公司"
     supplier_company_name: str
     status: InquiryStatus

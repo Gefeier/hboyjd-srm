@@ -48,6 +48,12 @@ class Inquiry(SQLModel, table=True):
     delivery_date: str | None = Field(default=None, sa_column=Column(String(32), nullable=True))  # "30天内"或具体日期,手填
     delivery_address: str | None = Field(default=None, sa_column=Column(String(256), nullable=True))
 
+    # 报价截止时间(可空 — 不设则不限期)。过此时间所有 magic link 写操作拒绝,supplier-quotes 列表显示"已截止"。
+    quote_deadline: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+
     status: InquiryStatus = Field(
         default=InquiryStatus.OPEN,
         sa_column=Column(String(16), nullable=False, server_default="open"),

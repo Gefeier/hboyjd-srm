@@ -54,7 +54,25 @@ body {
     padding-top: 10px; margin-top: 8px;
     border-top: 1px dashed var(--gray-100);
     color: var(--gray-700);
+    white-space: pre-wrap;  /* 多行需求说明保留换行 */
+    line-height: 1.85;
 }
+.req-box .remark .lbl-line {
+    font-weight: 600; color: var(--navy-900); margin-bottom: 6px;
+}
+
+/* ===== 截止时间 banner ===== */
+.deadline-bar {
+    margin-bottom: 18px; padding: 11px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px; line-height: 1.5;
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid;
+}
+.deadline-bar .ic { width: 18px; height: 18px; flex-shrink: 0; }
+.deadline-bar.ok { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+.deadline-bar.soon { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.deadline-bar.expired { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
 
 /* ===== section 卡片 ===== */
 .section-card {
@@ -298,19 +316,50 @@ body {
         `;
     }
 
+    function deadlineBar(iso) {
+        if (!iso) return "";
+        const target = new Date(iso).getTime();
+        const now = Date.now();
+        const diff = target - now;
+        const fmt = new Date(iso).toLocaleString("zh-CN", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+        let kind, txt;
+        if (diff <= 0) {
+            kind = "expired";
+            txt = `本询价单已于 ${fmt} 截止,报价不可再修改`;
+        } else {
+            const hours = diff / 3600000;
+            if (hours < 24) {
+                kind = "soon";
+                txt = `报价截止时间:${fmt}（仅剩 ${Math.ceil(hours)} 小时,请尽快提交）`;
+            } else {
+                kind = "ok";
+                const days = Math.ceil(hours / 24);
+                txt = `报价截止时间:${fmt}（还剩 ${days} 天）`;
+            }
+        }
+        return `
+          <div class="deadline-bar ${kind}">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <div>${esc(txt)}</div>
+          </div>
+        `;
+    }
+
     function render(d) {
         document.getElementById("docCode").textContent = d.code;
         document.getElementById("docDate").textContent = "发出日期:" + fmtDate(d.created_at);
         document.title = d.code + " · 询价回函 · 欧阳聚德";
 
-        const isClosed = d.status === "closed";
+        // 后端 is_expired 为权威;前端 deadline_bar 补充倒计时显示
+        const isExpired = !!d.is_expired;
+        const isClosed = d.status === "closed" || isExpired;  // 任一为真都按已截止处理(禁写)
         const hasQuoted = !!d.quoted_at;
 
         let statusLine = "";
-        if (isClosed) {
-            statusLine = `<div style="text-align:center;margin-bottom:20px"><span class="closed-badge">本询价单已截止,报价不可再修改</span></div>`;
-        } else if (hasQuoted) {
-            statusLine = `<div style="text-align:center;margin-bottom:20px"><span class="quoted-badge">您已于 ${fmtDateTime(d.quoted_at)} 提交过报价 · 仍可在本页继续修改</span></div>`;
+        if (d.status === "closed" && !d.quote_deadline) {
+            statusLine = `<div style="text-align:center;margin-bottom:20px"><span class="closed-badge">本询价单已关闭,报价不可再修改</span></div>`;
+        } else if (hasQuoted && !isExpired) {
+            statusLine = `<div style="text-align:center;margin-bottom:20px"><span class="quoted-badge">您已于 ${fmtDateTime(d.quoted_at)} 提交过报价 · 仍可在本页继续修改后再次提交</span></div>`;
         }
 
         // 采购员预设物料(通常为空)
@@ -369,21 +418,22 @@ body {
         const html = `
           <div class="doc-title">询 价 单</div>
 
+          ${deadlineBar(d.quote_deadline)}
           ${statusLine}
 
           <div class="salutation"><b>${esc(d.supplier_company_name)}</b>:</div>
           <div class="intro">
               您好!我司(湖北欧阳聚德汽车有限公司)因采购业务需要,现请贵司提供产品报价单。
               您可在下方上传报价单(支持 PDF、Excel、图片),也可直接在「报价明细」栏手动填写。
-              填写完成后点击底部「提交报价」按钮即可。如有疑问请联系对接采购员。
+              填写完成后点击底部「${hasQuoted ? '更新报价' : '提交报价'}」按钮即可。${hasQuoted ? '如需调价,在本页直接修改后再次提交即可,系统会保留您的每次报价记录。' : ''}如有疑问请联系对接采购员。
           </div>
 
           <div class="req-box">
-              <div class="row">
+              <div class="row" style="width:100%">
                   ${d.delivery_date ? `<div><span class="lbl">要求交期:</span> <span class="val">${esc(d.delivery_date)}</span></div>` : ""}
-                  ${d.remark ? `<div class="remark"><b>需求说明:</b>${esc(d.remark)}</div>` : ""}
                   ${!d.delivery_date && !d.remark ? `<div style="color:var(--gray-500)">欢迎提供贵司可供产品及报价。</div>` : ""}
               </div>
+              ${d.remark ? `<div class="remark"><div class="lbl-line">需求说明</div>${esc(d.remark)}</div>` : ""}
           </div>
 
           ${presetSection}
@@ -423,7 +473,7 @@ body {
                       <div><span class="lbl">本单报价合计:</span><span class="val">¥ <span id="totalVal">0.00</span></span></div>
                       <div class="hint2">明细行(数量×单价)+ 预设物料(采购方数量×单价)</div>
                   </div>
-                  ${isClosed ? "" : `<button type="button" class="btn btn-primary" id="submitBtn">${hasQuoted ? "保存修改" : "提交报价"}</button>`}
+                  ${isClosed ? "" : `<button type="button" class="btn btn-primary" id="submitBtn">${hasQuoted ? "更新报价并保存" : "提交报价"}</button>`}
               </div>
           </div>
 
@@ -665,7 +715,10 @@ body {
             });
             const d = await res.json();
             if (!res.ok) throw new Error(d.detail || "提交失败");
-            showMsg("ok", `报价已提交,感谢您。如需修改可继续在本页编辑后再次提交。`);
+            const wasUpdate = !!viewData.quoted_at;
+            showMsg("ok", wasUpdate
+                ? "报价已更新,感谢您。系统已保存本次价格,如需再调整请继续修改后再次点击「更新报价并保存」。"
+                : "报价已提交,感谢您。如需修改可继续在本页编辑后再次提交。");
             setTimeout(load, 900);
         } catch (err) {
             showMsg("err", err.message);

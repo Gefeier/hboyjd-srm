@@ -82,6 +82,7 @@ def _build_inquiry_read(inquiry: Inquiry, session: Session) -> InquiryRead:
         status=inquiry.status,
         delivery_date=inquiry.delivery_date,
         delivery_address=inquiry.delivery_address,
+        quote_deadline=inquiry.quote_deadline,
         awarded_supplier_id=inquiry.awarded_supplier_id,
         awarded_supplier_name=awarded.company_name if awarded else None,
         closed_at=inquiry.closed_at,
@@ -118,6 +119,7 @@ def create_inquiry(
         buyer_id=current_user.id,
         delivery_date=payload.delivery_date,
         delivery_address=payload.delivery_address,
+        quote_deadline=payload.quote_deadline,
         status=InquiryStatus.OPEN,
     )
     session.add(inquiry)
@@ -244,6 +246,8 @@ def update_inquiry(
         inquiry.delivery_date = data["delivery_date"]
     if "delivery_address" in data:
         inquiry.delivery_address = data["delivery_address"]
+    if "quote_deadline" in data:
+        inquiry.quote_deadline = data["quote_deadline"]
     inquiry.updated_at = datetime.now(UTC)
 
     session.add(inquiry)

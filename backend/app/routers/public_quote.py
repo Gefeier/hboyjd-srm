@@ -65,6 +65,25 @@ def _load_invite_by_token(session: Session, token: str) -> InquiryInvite:
     return invite
 
 
+def _is_expired(inquiry: Inquiry) -> bool:
+    """是否已过报价截止时间。无截止时间则永不过期。"""
+    if not inquiry.quote_deadline:
+        return False
+    deadline = inquiry.quote_deadline
+    # 兼容数据库里存的是 naive datetime 的情况
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=UTC)
+    return datetime.now(UTC) > deadline
+
+
+def _ensure_writable(inquiry: Inquiry) -> None:
+    """统一的写操作前置:已关闭/已截止则拒绝。"""
+    if inquiry.status == InquiryStatus.CLOSED:
+        raise HTTPException(400, "此询价单已关闭,无法再修改报价")
+    if _is_expired(inquiry):
+        raise HTTPException(400, "此询价单已过报价截止时间,无法再修改报价")
+
+
 def _latest_revision(session: Session, inquiry_id: int, supplier_id: int) -> QuoteRevision | None:
     return session.exec(
         select(QuoteRevision)
@@ -138,6 +157,8 @@ def _build_view(session: Session, invite: InquiryInvite) -> PublicQuoteView:
         title=inquiry.title,
         remark=inquiry.remark,
         delivery_date=inquiry.delivery_date,
+        quote_deadline=inquiry.quote_deadline,
+        is_expired=_is_expired(inquiry),
         supplier_company_name=supplier.company_name,
         status=inquiry.status,
         created_at=inquiry.created_at,
@@ -168,8 +189,7 @@ def submit_quote(
     inquiry = session.get(Inquiry, invite.inquiry_id)
     if not inquiry:
         raise HTTPException(404, "询价单不存在")
-    if inquiry.status == InquiryStatus.CLOSED:
-        raise HTTPException(400, "此询价单已关闭,无法再修改报价")
+    _ensure_writable(inquiry)
 
     now = datetime.now(UTC)
     ip = request.client.host if request.client else None
@@ -328,8 +348,7 @@ async def upload_attachment(
     inquiry = session.get(Inquiry, invite.inquiry_id)
     if not inquiry:
         raise HTTPException(404, "询价单不存在")
-    if inquiry.status == InquiryStatus.CLOSED:
-        raise HTTPException(400, "此询价单已关闭,无法再上传附件")
+    _ensure_writable(inquiry)
 
     mime = file.content_type or mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"
     if mime not in ALLOWED_MIMES:
@@ -384,8 +403,8 @@ def delete_attachment(
     if not att or att.inquiry_id != invite.inquiry_id or att.supplier_id != invite.supplier_id:
         raise HTTPException(404, "附件不存在")
     inquiry = session.get(Inquiry, invite.inquiry_id)
-    if inquiry and inquiry.status == InquiryStatus.CLOSED:
-        raise HTTPException(400, "此询价单已关闭,无法删除附件")
+    if inquiry:
+        _ensure_writable(inquiry)
     try:
         disk_path = UPLOAD_ROOT / att.storage_path
         if disk_path.exists():

@@ -267,10 +267,18 @@ body { background: var(--gray-50); }
                             <input type="text" name="delivery_address" value="湖北省枣阳市发展大道23号(G316)">
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="fld">
+                            <label>报价截止时间 <span style="color:var(--gray-400);font-weight:400">(供应商可见 · 留空则不限期)</span></label>
+                            <input type="datetime-local" name="quote_deadline">
+                            <div style="font-size:11.5px;color:var(--gray-400);margin-top:4px">过此时间后供应商无法再修改报价</div>
+                        </div>
+                        <div class="fld"></div>
+                    </div>
                     <div class="form-row full">
                         <div class="fld">
-                            <label>需求说明 <span style="color:var(--gray-400);font-weight:400">(供应商可见 · 留空可省略)</span></label>
-                            <textarea name="remark" placeholder="给供应商看的说明:品类范围、付款方式、质量要求等。不写也行。"></textarea>
+                            <label>详细需求说明 <span style="color:var(--gray-400);font-weight:400">(供应商可见 · 留空可省略)</span></label>
+                            <textarea name="remark" rows="6" placeholder="给供应商看的具体需求 — 例如:&#10;1. 钢材材质要求(Q235B/SPCC等)、厚度公差&#10;2. 表面处理(镀锌/喷塑/原色)&#10;3. 付款方式(月结30天/货到付款)&#10;4. 检验/包装/运输要求&#10;留空也可以,但写清楚能让供应商报得更准。"></textarea>
                         </div>
                     </div>
                 </div>
@@ -551,11 +559,19 @@ body { background: var(--gray-50); }
         // items 可选:留空则供应商自由报价
         if (!selectedIds.size) { errEl.textContent = "请至少勾选一家供应商"; errEl.hidden = false; return; }
 
+        const deadlineRaw = form.quote_deadline.value;
+        let quoteDeadline = null;
+        if (deadlineRaw) {
+            // datetime-local 不带时区,按浏览器本地时区转 UTC ISO
+            quoteDeadline = new Date(deadlineRaw).toISOString();
+        }
+
         const payload = {
             title,
             remark: form.remark.value.trim() || null,
             delivery_date: form.delivery_date.value.trim() || null,
             delivery_address: form.delivery_address.value.trim() || null,
+            quote_deadline: quoteDeadline,
             items,
             supplier_ids: Array.from(selectedIds),
         };
