@@ -1,10 +1,9 @@
 """LLM 调用 — 用 MiniMax 解析供应商上传的报价附件 (PDF / Excel / 图片 / CSV)
 
-环境变量:
-- MINIMAX_API_KEY: MiniMax API key (sk-api-... 格式)
-- MINIMAX_BASE_URL: https://api.minimaxi.com/v1 (默认)
-- MINIMAX_MODEL: 文本模型(默认 MiniMax-Text-01)
-- MINIMAX_VISION_MODEL: 视觉模型(默认 MiniMax-VL-01,用于图片)
+配置优先级(运行时每次调用读取):
+1. 数据库 app_setting 表(可通过 PUT /api/v1/admin/settings/{key} 写入)
+2. 环境变量 fallback (MINIMAX_API_KEY / MINIMAX_BASE_URL / MINIMAX_MODEL / MINIMAX_VISION_MODEL)
+3. 默认值
 
 没配 key 时 is_configured() 返回 False,调用方降级到"手动填写"提示。
 """
@@ -17,13 +16,46 @@ import re
 from pathlib import Path
 
 import requests
+from sqlmodel import Session
 
 logger = logging.getLogger(__name__)
 
-API_KEY = os.environ.get("MINIMAX_API_KEY", "").strip()
-BASE_URL = os.environ.get("MINIMAX_BASE_URL", "https://api.minimaxi.com/v1").rstrip("/")
-MODEL_TEXT = os.environ.get("MINIMAX_MODEL", "MiniMax-Text-01")
-MODEL_VISION = os.environ.get("MINIMAX_VISION_MODEL", "MiniMax-VL-01")
+DEFAULTS = {
+    "MINIMAX_API_KEY": "",
+    "MINIMAX_BASE_URL": "https://api.minimaxi.com/v1",
+    "MINIMAX_MODEL": "MiniMax-Text-01",
+    "MINIMAX_VISION_MODEL": "MiniMax-VL-01",
+}
+
+
+def _get_cfg(key: str) -> str:
+    """优先读 db.app_setting,回退 env,最后 default"""
+    try:
+        from app.db import engine
+        from app.models.app_setting import AppSetting
+        with Session(engine) as session:
+            rec = session.get(AppSetting, key)
+            if rec and rec.value:
+                return rec.value.strip()
+    except Exception as e:  # 启动时表可能还没建,容错
+        logger.debug(f"_get_cfg db read failed for {key}: {e}")
+    return os.environ.get(key, DEFAULTS.get(key, "")).strip()
+
+
+def _api_key() -> str:
+    return _get_cfg("MINIMAX_API_KEY")
+
+
+def _base_url() -> str:
+    return _get_cfg("MINIMAX_BASE_URL").rstrip("/")
+
+
+def _model_text() -> str:
+    return _get_cfg("MINIMAX_MODEL")
+
+
+def _model_vision() -> str:
+    return _get_cfg("MINIMAX_VISION_MODEL")
 
 # 给 LLM 的 prompt — 严格限定输出格式
 PARSE_PROMPT = """你是一个采购报价单解析助手。下面是一份供应商报价单的内容,请你从中提取所有的物料/产品报价行,以 JSON 格式返回。
@@ -59,7 +91,7 @@ PARSE_PROMPT = """你是一个采购报价单解析助手。下面是一份供�
 
 
 def is_configured() -> bool:
-    return bool(API_KEY)
+    return bool(_api_key())
 
 
 def _extract_json(text: str) -> dict | None:
@@ -80,17 +112,19 @@ def _extract_json(text: str) -> dict | None:
 
 def _call_chat(messages: list, *, model: str | None = None, timeout: int = 90) -> dict:
     """统一调用入口 — 返回 {ok: bool, content?: str, error?: str}"""
-    if not is_configured():
+    api_key = _api_key()
+    base_url = _base_url()
+    if not api_key:
         return {"ok": False, "error": "LLM 未配置(缺少 MINIMAX_API_KEY)"}
     try:
         resp = requests.post(
-            f"{BASE_URL}/text/chatcompletion_v2",
+            f"{base_url}/text/chatcompletion_v2",
             headers={
-                "Authorization": f"Bearer {API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             json={
-                "model": model or MODEL_TEXT,
+                "model": model or _model_text(),
                 "messages": messages,
                 "max_tokens": 4096,
                 "temperature": 0.2,
@@ -118,7 +152,7 @@ def _parse_from_text(text: str) -> dict:
     if len(text) > 60000:
         text = text[:60000] + "\n[...内容过长已截断]"
     prompt = PARSE_PROMPT.replace("{CONTENT}", text)
-    res = _call_chat([{"role": "user", "content": prompt}], model=MODEL_TEXT)
+    res = _call_chat([{"role": "user", "content": prompt}], model=_model_text())
     if not res.get("ok"):
         return res
     parsed = _extract_json(res["content"])
@@ -141,7 +175,7 @@ def _parse_from_image(disk_path: Path, mime: str) -> dict:
             {"type": "image_url", "image_url": {"url": data_url}},
         ],
     }]
-    res = _call_chat(messages, model=MODEL_VISION, timeout=120)
+    res = _call_chat(messages, model=_model_vision(), timeout=120)
     if not res.get("ok"):
         return res
     parsed = _extract_json(res["content"])

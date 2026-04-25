@@ -13,6 +13,7 @@ from app.routers.auth import router as auth_router
 from app.routers.inquiries import my_router as my_inquiries_router
 from app.routers.inquiries import router as inquiries_router
 from app.routers.public_quote import router as public_quote_router
+from app.routers.settings import router as settings_router
 from app.routers.suppliers import router as suppliers_router
 from app.seed import seed_default_user
 
@@ -84,3 +85,4 @@ app.include_router(suppliers_router, prefix=settings.api_v1_prefix)
 app.include_router(inquiries_router, prefix=settings.api_v1_prefix)
 app.include_router(my_inquiries_router, prefix=settings.api_v1_prefix)
 app.include_router(public_quote_router, prefix=settings.api_v1_prefix)
+app.include_router(settings_router, prefix=settings.api_v1_prefix)
