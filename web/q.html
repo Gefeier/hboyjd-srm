@@ -283,6 +283,12 @@ body {
     const fmtDate = (iso) => iso ? iso.slice(0, 10) : "—";
     const fmtDateTime = (iso) => iso ? iso.slice(0, 16).replace("T", " ") : "—";
     const fmtSize = (n) => n < 1024 ? n + " B" : n < 1024*1024 ? (n/1024).toFixed(1) + " KB" : (n/1024/1024).toFixed(2) + " MB";
+    // 友好的交期显示:合法日期(YYYY-MM-DD开头)→"2026年5月31日";其他原样
+    const fmtDeliveryDate = (s) => {
+        if (!s) return "";
+        const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return m ? `${m[1]}年${parseInt(m[2])}月${parseInt(m[3])}日` : s;
+    };
 
     let viewData = null;
 
@@ -430,7 +436,7 @@ body {
 
           <div class="req-box">
               <div class="row" style="width:100%">
-                  ${d.delivery_date ? `<div><span class="lbl">要求交期:</span> <span class="val">${esc(d.delivery_date)}</span></div>` : ""}
+                  ${d.delivery_date ? `<div><span class="lbl">要求到货日期:</span> <span class="val">${esc(fmtDeliveryDate(d.delivery_date))}</span></div>` : ""}
                   ${!d.delivery_date && !d.remark ? `<div style="color:var(--gray-500)">欢迎提供贵司可供产品及报价。</div>` : ""}
               </div>
               ${d.remark ? `<div class="remark"><div class="lbl-line">需求说明</div>${esc(d.remark)}</div>` : ""}

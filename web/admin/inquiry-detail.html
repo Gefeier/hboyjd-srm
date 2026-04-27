@@ -201,6 +201,19 @@ body { background: var(--gray-50); }
     const esc = (s) => (s || "").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
     const fmtDate = (iso) => iso ? iso.slice(0, 16).replace("T", " ") : "—";
     const fmtMoney = (n) => n == null ? "—" : Number(n).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // 把字符串转成 type=date input 需要的 "YYYY-MM-DD" 格式;不合法则返回空
+    function toDateValue(s) {
+        if (!s) return "";
+        const m = String(s).match(/^(\d{4}-\d{2}-\d{2})/);
+        return m ? m[1] : "";
+    }
+    // 格式化交期显示:合法日期返回友好格式,其他原样
+    function fmtDeliveryDate(s) {
+        if (!s) return "—";
+        const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return `${m[1]}年${parseInt(m[2])}月${parseInt(m[3])}日`;
+        return s;
+    }
     // 把后端 ISO(UTC) 转成 datetime-local input 用的本地时间字符串 "YYYY-MM-DDTHH:MM"
     function toLocalDTValue(iso) {
         if (!iso) return "";
@@ -329,7 +342,7 @@ body { background: var(--gray-50); }
           <section class="req-card">
             <h4>要求说明</h4>
             <div class="req-grid">
-                <div class="fld"><div class="l">要求交期</div><div class="v">${esc(d.delivery_date || "—")}</div></div>
+                <div class="fld"><div class="l">要求到货日期</div><div class="v">${esc(fmtDeliveryDate(d.delivery_date))}</div></div>
                 <div class="fld"><div class="l">报价截止</div><div class="v" style="color:${dlColor}">${dl ? esc(dl.text) : "未设(不限期)"}</div></div>
                 <div class="fld"><div class="l">邀请/已报</div><div class="v">${suppliers.length} 家 / <b style="color:${d.quoted_count === suppliers.length && suppliers.length > 0 ? 'var(--ok-500)' : 'var(--warn-500)'}">${d.quoted_count}</b> 家</div></div>
                 <div class="fld"><div class="l">物料模式</div><div class="v">${items.length > 0 ? "采购员预设(方式1)" : "供应商自报(方式4)"}</div></div>
@@ -522,8 +535,8 @@ body { background: var(--gray-50); }
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
                         <div>
-                            <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">要求交期</label>
-                            <input id="edDate" type="text" value="${esc(d.delivery_date || "")}" placeholder="如:30天内" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;font-family:inherit">
+                            <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">要求到货日期</label>
+                            <input id="edDate" type="date" value="${toDateValue(d.delivery_date)}" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;font-family:inherit">
                         </div>
                         <div>
                             <label style="display:block;font-size:12px;color:#64748b;margin-bottom:5px">交货地址</label>
