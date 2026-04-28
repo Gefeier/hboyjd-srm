@@ -236,7 +236,7 @@ def list_suppliers(
     category: str | None = None,
     keyword: str | None = None,
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=20, ge=1, le=500),
     session: Session = Depends(get_session),
     _: User = Depends(get_current_user),
 ) -> SupplierListResponse:

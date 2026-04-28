@@ -582,11 +582,13 @@ body { background: var(--gray-50); }
 
     async function loadSuppliers() {
         try {
-            const res = await srmFetch("/api/v1/suppliers?status=approved&page_size=200");
+            const res = await srmFetch("/api/v1/suppliers?status=approved&page_size=500");
             const data = await res.json();
-            allSuppliers = data.items;
+            if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+            allSuppliers = Array.isArray(data.items) ? data.items : [];
             renderSuppliers();
         } catch (err) {
+            allSuppliers = [];
             supplierList.innerHTML = `<div style="padding:30px;text-align:center;color:var(--danger-500);font-size:13px">加载失败: ${esc(err.message)}</div>`;
         }
     }
