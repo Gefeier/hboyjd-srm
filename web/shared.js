@@ -112,6 +112,7 @@ function initAuthNav() {
         { icon: ICON.logout, label: "退出登录", logout: true, danger: true },
     ] : [
         { icon: ICON.dashboard, label: "采购中心首页", href: P + "admin/index.html" },
+        { icon: ICON.scales, label: "询价大盘", href: P + "admin/dashboard.html" },
         { icon: ICON.users, label: "合格供应商库", href: P + "admin/suppliers.html" },
         { icon: ICON.bolt, label: "待审核入驻", href: P + "admin/suppliers.html?status=pending" },
         { icon: ICON.scales, label: "询价单管理", href: P + "admin/inquiries.html" },

@@ -130,6 +130,7 @@ def create_inquiry(
 
     # 物料行
     from app.constants import MATERIAL_CATEGORIES
+    from app.routers.materials import upsert_material
     for idx, it in enumerate(payload.items):
         # 校验 category 在 11 大类内,不在则置空(防错填,不阻断)
         cat = it.category if it.category in MATERIAL_CATEGORIES else None
@@ -143,6 +144,19 @@ def create_inquiry(
             sort_order=idx,
             category=cat,
         ))
+        # 自动归档到物料主档(下次可一键复用)
+        try:
+            upsert_material(
+                session,
+                name=it.name,
+                spec=it.spec,
+                unit=it.unit or "个",
+                category=cat,
+                buyer_id=current_user.id,
+            )
+        except Exception:
+            # 归档失败不影响主流程
+            pass
 
     # 邀标 + 自动生成 magic link token
     for sid in payload.supplier_ids:

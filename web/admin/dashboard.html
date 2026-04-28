@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>询价大盘 · 欧阳聚德采购中心</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+body { background: var(--gray-50); }
+.admin-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; padding-top: 72px; }
+.admin-aside { position: fixed; top: 72px; left: 0; bottom: 0; width: 260px; background: var(--white); border-right: 1px solid var(--gray-100); padding: 28px 0; overflow-y: auto; }
+.admin-user { padding: 0 24px 20px; border-bottom: 1px solid var(--gray-100); margin-bottom: 20px; }
+.admin-user .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--blue-600), var(--navy-700)); color: var(--white); display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; margin-right: 10px; float: left; }
+.admin-user .info { padding-left: 50px; }
+.admin-user .name { font-size: 14px; font-weight: 500; color: var(--navy-900); }
+.admin-user .role { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+.aside-group { margin-bottom: 16px; }
+.aside-group h6 { font-size: 11px; color: var(--gray-400); font-weight: 500; padding: 8px 24px; text-transform: uppercase; }
+.aside-nav a { display: flex; align-items: center; gap: 12px; padding: 10px 24px; font-size: 14px; color: var(--gray-700); border-left: 3px solid transparent; }
+.aside-nav a:hover { background: var(--gray-50); color: var(--navy-900); }
+.aside-nav a.active { background: var(--blue-50); color: var(--blue-700); font-weight: 500; border-left-color: var(--blue-600); }
+
+.admin-main { grid-column: 2; padding: 32px 40px 80px; }
+.page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.page-head h1 { font-size: 24px; font-weight: 600; color: var(--navy-900); }
+.page-head .sub { color: var(--gray-500); font-size: 13px; margin-top: 4px; }
+
+/* KPI 横条 */
+.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.kpi-card { background: var(--white); border: 1px solid var(--gray-100); border-radius: var(--radius); padding: 18px 22px; }
+.kpi-card .lbl { font-size: 12px; color: var(--gray-500); margin-bottom: 6px; }
+.kpi-card .val { font-size: 28px; font-weight: 700; color: var(--navy-900); line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi-card .val-unit { font-size: 13px; color: var(--gray-500); font-weight: 400; margin-left: 4px; }
+.kpi-card .hint { margin-top: 8px; font-size: 12px; color: var(--gray-500); }
+.kpi-card.warn .val { color: var(--warn-500); }
+.kpi-card.danger .val { color: var(--danger-500); }
+.kpi-card.ok .val { color: var(--ok-500); }
+
+/* Filter tabs */
+.filter-tabs { display: flex; gap: 4px; margin-bottom: 18px; padding: 4px; background: var(--white); border: 1px solid var(--gray-100); border-radius: var(--radius); width: fit-content; }
+.filter-tabs button { padding: 8px 16px; background: transparent; border: none; cursor: pointer; font-size: 13px; color: var(--gray-600); border-radius: var(--radius-sm); font-family: inherit; transition: all 0.15s; }
+.filter-tabs button:hover { color: var(--navy-900); }
+.filter-tabs button.active { background: var(--blue-600); color: var(--white); }
+.filter-tabs button .badge { display: inline-block; margin-left: 6px; background: rgba(0,0,0,0.1); color: inherit; padding: 0 6px; border-radius: 8px; font-size: 11px; }
+.filter-tabs button.active .badge { background: rgba(255,255,255,0.25); }
+
+/* 流程卡片 */
+.flow-list { display: flex; flex-direction: column; gap: 14px; }
+.flow-card { background: var(--white); border: 1px solid var(--gray-100); border-radius: var(--radius); padding: 18px 22px; cursor: pointer; transition: all 0.15s; }
+.flow-card:hover { border-color: var(--blue-300); box-shadow: var(--shadow); }
+.flow-card.expired { border-left: 4px solid var(--danger-500); }
+.flow-card.due-soon { border-left: 4px solid var(--warn-500); }
+.flow-card.awarded { border-left: 4px solid var(--ok-500); opacity: 0.85; }
+
+.flow-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.flow-head .title { flex: 1; min-width: 200px; }
+.flow-head .title h3 { font-size: 16px; color: var(--navy-900); font-weight: 600; margin-bottom: 4px; }
+.flow-head .title .meta { font-size: 12px; color: var(--gray-500); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.flow-head .title .meta .code { font-family: monospace; color: var(--blue-600); }
+.flow-head .deadline { text-align: right; min-width: 120px; }
+.flow-head .deadline .label { font-size: 11px; color: var(--gray-400); }
+.flow-head .deadline .time { font-size: 13px; color: var(--navy-900); font-weight: 500; margin-top: 2px; }
+.flow-head .deadline.warn .time { color: var(--warn-600); }
+.flow-head .deadline.danger .time { color: var(--danger-500); }
+
+.flow-categories { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.flow-categories .chip { padding: 3px 10px; background: var(--blue-50); color: var(--blue-700); border-radius: 12px; font-size: 11px; font-weight: 500; }
+.flow-categories .chip-empty { padding: 3px 10px; background: var(--gray-50); color: var(--gray-500); border-radius: 12px; font-size: 11px; font-style: italic; }
+
+/* 流程链 */
+.flow-chain { display: grid; grid-template-columns: 1.4fr auto 1fr auto 1fr auto 1fr; gap: 8px; align-items: center; margin-top: 6px; }
+.flow-stage { padding: 12px 14px; border-radius: var(--radius-sm); background: var(--gray-50); border: 1px solid var(--gray-100); text-align: center; }
+.flow-stage.active { background: var(--blue-50); border-color: var(--blue-200); }
+.flow-stage.done { background: var(--ok-50); border-color: var(--ok-200); }
+.flow-stage.pending { background: var(--warn-50); border-color: var(--warn-200); }
+.flow-stage .ic { font-size: 18px; margin-bottom: 4px; line-height: 1; }
+.flow-stage .num { font-size: 18px; font-weight: 700; color: var(--navy-900); line-height: 1; }
+.flow-stage .lbl { font-size: 11px; color: var(--gray-500); margin-top: 4px; }
+.flow-stage.done .num { color: var(--ok-600); }
+.flow-stage.pending .num { color: var(--warn-600); }
+.arrow { color: var(--gray-300); font-size: 18px; line-height: 1; }
+
+.progress-thin { height: 4px; background: var(--gray-100); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+.progress-thin .bar { height: 100%; background: linear-gradient(90deg, var(--blue-500), var(--ok-500)); transition: width 0.3s; }
+
+.empty-state { padding: 60px 20px; text-align: center; color: var(--gray-500); background: var(--white); border-radius: var(--radius); border: 1px dashed var(--gray-200); }
+.empty-state h4 { color: var(--navy-900); font-size: 15px; margin-bottom: 6px; }
+.empty-state p { font-size: 13px; }
+
+@media (max-width: 980px) {
+    .admin-aside { display: none; }
+    .admin-shell { grid-template-columns: 1fr; }
+    .admin-main { padding: 24px 18px; }
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .flow-chain { grid-template-columns: 1fr; gap: 4px; }
+    .flow-chain .arrow { transform: rotate(90deg); padding: 2px 0; }
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar always-solid">
+    <div class="nav-container">
+        <a href="../index.html" class="nav-logo">
+            <img src="../assets/logo-white.png" alt="欧阳聚德">
+            <span class="nav-suffix">采购中心</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="https://hboyjd.com">官网首页</a></li>
+            <li><a href="../bids.html">采购公告</a></li>
+            <li><a href="index.html">采购中心</a></li>
+        </ul>
+        <a href="#" class="nav-cta" style="background: transparent; border: 1px solid rgba(255,255,255,0.3);"><span>加载中</span></a>
+    </div>
+</nav>
+
+<div class="admin-shell">
+    <aside class="admin-aside">
+        <div class="admin-user">
+            <div class="avatar" id="asideAvatar">欧</div>
+            <div class="info">
+                <div class="name" id="asideName">加载中</div>
+                <div class="role"><span class="pill pill-blue" id="asideRole">采购主管</span></div>
+            </div>
+        </div>
+        <div class="aside-group">
+            <h6>工作台</h6>
+            <nav class="aside-nav">
+                <a href="index.html"><span>概览首页</span></a>
+                <a href="dashboard.html" class="active"><span>询价大盘</span></a>
+            </nav>
+        </div>
+        <div class="aside-group">
+            <h6>供应商管理</h6>
+            <nav class="aside-nav">
+                <a href="suppliers.html"><span>合格供应商库</span></a>
+                <a href="suppliers.html?status=pending"><span>入驻审核</span></a>
+            </nav>
+        </div>
+        <div class="aside-group">
+            <h6>寻源与采购</h6>
+            <nav class="aside-nav">
+                <a href="inquiries.html"><span>询价单管理</span></a>
+                <a href="compare.html"><span>比价与定点</span></a>
+            </nav>
+        </div>
+        <div class="aside-group">
+            <h6>基础资料</h6>
+            <nav class="aside-nav">
+                <a href="account.html"><span>员工与权限</span></a>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="admin-main">
+        <div class="page-head">
+            <div>
+                <h1>询价大盘</h1>
+                <div class="sub">每张单的进度一目了然 · 主管/老板视角</div>
+            </div>
+            <a href="inquiries.html" class="btn-primary" style="text-decoration:none;padding:8px 16px;border-radius:var(--radius-sm);">+ 新建询价</a>
+        </div>
+
+        <!-- KPI -->
+        <div class="kpi-strip">
+            <div class="kpi-card">
+                <div class="lbl">进行中询价</div>
+                <div class="val"><span id="kpiActive">—</span><span class="val-unit">单</span></div>
+                <div class="hint">填价/比价中</div>
+            </div>
+            <div class="kpi-card warn">
+                <div class="lbl">即将截止 (24h内)</div>
+                <div class="val"><span id="kpiDueSoon">—</span><span class="val-unit">单</span></div>
+                <div class="hint">需关注响应进度</div>
+            </div>
+            <div class="kpi-card danger">
+                <div class="lbl">已超时未定标</div>
+                <div class="val"><span id="kpiExpired">—</span><span class="val-unit">单</span></div>
+                <div class="hint">超过截止仍未关闭</div>
+            </div>
+            <div class="kpi-card ok">
+                <div class="lbl">本月已定标</div>
+                <div class="val"><span id="kpiAwarded">—</span><span class="val-unit">单</span></div>
+                <div class="hint">已选定供应商</div>
+            </div>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="filter-tabs" id="filterTabs">
+            <button data-filter="all" class="active">全部 <span class="badge" id="cntAll">0</span></button>
+            <button data-filter="open">进行中 <span class="badge" id="cntOpen">0</span></button>
+            <button data-filter="due_soon">即将截止 <span class="badge" id="cntDue">0</span></button>
+            <button data-filter="expired">已超时 <span class="badge" id="cntExp">0</span></button>
+            <button data-filter="closed">已关闭 <span class="badge" id="cntCls">0</span></button>
+        </div>
+
+        <div class="flow-list" id="flowList"></div>
+    </main>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+(function () {
+    if (!requireAuth({ requireAdmin: true })) return;
+
+    const u = SRMAuth.getUser();
+    if (u) {
+        const roleLabel = u.role === "admin" ? "管理员" : u.role === "buyer" ? "采购主管" : "审批员";
+        document.getElementById("asideAvatar").textContent = (u.name || u.username).charAt(0);
+        document.getElementById("asideName").textContent = u.name || u.username;
+        document.getElementById("asideRole").textContent = roleLabel;
+    }
+
+    const esc = (s) => (s || "").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+
+    function fmtDeadline(iso) {
+        if (!iso) return null;
+        const d = new Date(iso);
+        const now = new Date();
+        const diff = (d - now) / 1000;
+        const ymd = d.toLocaleDateString("zh-CN", {month:"2-digit",day:"2-digit"}) +
+                    " " + d.toLocaleTimeString("zh-CN", {hour:"2-digit",minute:"2-digit",hour12:false});
+        if (diff < 0) {
+            const hours = Math.abs(Math.floor(diff / 3600));
+            return { text: ymd, sub: hours < 24 ? `已超时 ${hours}h` : `已超时 ${Math.floor(hours/24)} 天`, status: "expired" };
+        }
+        if (diff < 86400) {
+            const hours = Math.floor(diff / 3600);
+            const mins = Math.floor((diff % 3600) / 60);
+            return { text: ymd, sub: `剩 ${hours}h ${mins}m`, status: "due_soon" };
+        }
+        const days = Math.floor(diff / 86400);
+        return { text: ymd, sub: `剩 ${days} 天`, status: "ok" };
+    }
+
+    function categorize(inq) {
+        // 返回:'closed' | 'expired' | 'due_soon' | 'open'
+        if (inq.status === "closed") return "closed";
+        const dl = inq.quote_deadline ? new Date(inq.quote_deadline) : null;
+        if (dl) {
+            const diff = (dl - new Date()) / 1000;
+            if (diff < 0) return "expired";
+            if (diff < 86400) return "due_soon";
+        }
+        return "open";
+    }
+
+    let allInquiries = [];
+    let detailCache = {};   // id -> {items: [{category}]}
+    let currentFilter = "all";
+
+    async function loadAll() {
+        try {
+            const res = await srmFetch("/api/v1/inquiries?page_size=100");
+            if (!res.ok) throw new Error("加载失败");
+            const data = await res.json();
+            allInquiries = Array.isArray(data.items) ? data.items : [];
+            updateKPI();
+            updateCounts();
+            // 异步拉取每张单的物料类别(用于显示 chip)
+            allInquiries.forEach(inq => {
+                if (!detailCache[inq.id]) {
+                    srmFetch("/api/v1/inquiries/" + inq.id).then(r => r.json()).then(d => {
+                        detailCache[inq.id] = d;
+                        // 重渲染当前那一张卡的类别行
+                        const card = document.querySelector(`[data-inq-id="${inq.id}"]`);
+                        if (card) {
+                            const catRow = card.querySelector(".flow-categories");
+                            if (catRow) catRow.innerHTML = renderCategories(d.items || []);
+                        }
+                    }).catch(()=>{});
+                }
+            });
+            render();
+        } catch (err) {
+            document.getElementById("flowList").innerHTML = '<div class="empty-state" style="color:var(--danger-500)">加载失败: '+esc(err.message)+'</div>';
+        }
+    }
+
+    function updateKPI() {
+        const active = allInquiries.filter(x => x.status === "open").length;
+        const dueSoon = allInquiries.filter(x => categorize(x) === "due_soon").length;
+        const expired = allInquiries.filter(x => categorize(x) === "expired").length;
+        const thisMonth = new Date().toISOString().slice(0, 7);
+        const awarded = allInquiries.filter(x => x.status === "closed" && (x.closed_at || "").slice(0,7) === thisMonth).length;
+        document.getElementById("kpiActive").textContent = active;
+        document.getElementById("kpiDueSoon").textContent = dueSoon;
+        document.getElementById("kpiExpired").textContent = expired;
+        document.getElementById("kpiAwarded").textContent = awarded;
+    }
+
+    function updateCounts() {
+        const c = { all: allInquiries.length, open: 0, due_soon: 0, expired: 0, closed: 0 };
+        allInquiries.forEach(x => { c[categorize(x)]++; });
+        document.getElementById("cntAll").textContent = c.all;
+        document.getElementById("cntOpen").textContent = c.open;
+        document.getElementById("cntDue").textContent = c.due_soon;
+        document.getElementById("cntExp").textContent = c.expired;
+        document.getElementById("cntCls").textContent = c.closed;
+    }
+
+    function renderCategories(items) {
+        const cats = [...new Set(items.map(x => x.category).filter(Boolean))];
+        if (!cats.length) return '<span class="chip-empty">未分大类</span>';
+        return cats.map(c => `<span class="chip">${esc(c)}</span>`).join("");
+    }
+
+    function render() {
+        const list = currentFilter === "all"
+            ? allInquiries
+            : allInquiries.filter(x => categorize(x) === currentFilter);
+
+        if (!list.length) {
+            document.getElementById("flowList").innerHTML = `
+                <div class="empty-state">
+                    <h4>这一栏暂无询价单</h4>
+                    <p>切换标签查看其他状态,或点击右上「+ 新建询价」</p>
+                </div>`;
+            return;
+        }
+
+        // 排序:截止时间近的在前,无截止的在后,closed沉底
+        list.sort((a, b) => {
+            const sa = a.status === "closed" ? 1 : 0;
+            const sb = b.status === "closed" ? 1 : 0;
+            if (sa !== sb) return sa - sb;
+            const da = a.quote_deadline ? new Date(a.quote_deadline).getTime() : Infinity;
+            const db = b.quote_deadline ? new Date(b.quote_deadline).getTime() : Infinity;
+            return da - db;
+        });
+
+        document.getElementById("flowList").innerHTML = list.map(inq => {
+            const cat = categorize(inq);
+            const deadline = fmtDeadline(inq.quote_deadline);
+            const cardClass = inq.status === "closed" ? "awarded" :
+                              cat === "expired" ? "expired" :
+                              cat === "due_soon" ? "due-soon" : "";
+
+            const invited = inq.invited_count || 0;
+            const quoted = inq.quoted_count || 0;
+            const awardedDone = inq.status === "closed" && inq.awarded_supplier_id;
+            const responseRate = invited > 0 ? Math.round(quoted * 100 / invited) : 0;
+
+            // 4 阶段
+            const stage1Done = true;  // 询价单已建
+            const stage2Done = invited > 0;
+            const stage3Done = quoted > 0;
+            const stage3Pct = invited > 0 ? `${quoted}/${invited}` : "—";
+            const stage4Done = !!awardedDone;
+
+            const cachedDetail = detailCache[inq.id];
+            const cats = cachedDetail ? renderCategories(cachedDetail.items || []) : '<span class="chip-empty">加载中...</span>';
+
+            return `
+                <div class="flow-card ${cardClass}" data-inq-id="${inq.id}" onclick="location.href='inquiry-detail.html?id=${inq.id}'">
+                    <div class="flow-head">
+                        <div class="title">
+                            <h3>${esc(inq.title)}</h3>
+                            <div class="meta">
+                                <span class="code">${esc(inq.code)}</span>
+                                <span>采购员: ${esc(inq.buyer_name || "—")}</span>
+                                <span>物料 ${inq.item_count} 项</span>
+                                ${inq.status === "closed"
+                                    ? `<span style="color:var(--ok-600);font-weight:500">✓ 已定标 ${esc(inq.awarded_supplier_name || "")}</span>`
+                                    : `<span style="color:var(--blue-600)">进行中</span>`}
+                            </div>
+                        </div>
+                        ${deadline ? `
+                            <div class="deadline ${deadline.status === 'expired' ? 'danger' : deadline.status === 'due_soon' ? 'warn' : ''}">
+                                <div class="label">截止时间</div>
+                                <div class="time">${esc(deadline.text)}</div>
+                                <div style="font-size:11px;color:var(--gray-500);margin-top:2px">${esc(deadline.sub)}</div>
+                            </div>` : `
+                            <div class="deadline">
+                                <div class="label">截止时间</div>
+                                <div style="font-size:12px;color:var(--gray-400)">未设置</div>
+                            </div>`}
+                    </div>
+                    <div class="flow-categories">${cats}</div>
+                    <div class="flow-chain">
+                        <div class="flow-stage active">
+                            <div class="ic">📄</div>
+                            <div class="lbl">询价单</div>
+                            <div class="num" style="font-size:13px;font-weight:500;margin-top:4px">已发布</div>
+                        </div>
+                        <div class="arrow">→</div>
+                        <div class="flow-stage ${stage2Done ? 'done' : ''}">
+                            <div class="ic">👥</div>
+                            <div class="num">${invited}</div>
+                            <div class="lbl">家供应商</div>
+                        </div>
+                        <div class="arrow">→</div>
+                        <div class="flow-stage ${quoted === invited && invited > 0 ? 'done' : (quoted > 0 ? 'active' : 'pending')}">
+                            <div class="ic">💬</div>
+                            <div class="num">${stage3Pct}</div>
+                            <div class="lbl">已报价</div>
+                        </div>
+                        <div class="arrow">→</div>
+                        <div class="flow-stage ${stage4Done ? 'done' : (cat === 'expired' ? 'pending' : '')}">
+                            <div class="ic">${stage4Done ? '✓' : '⚖️'}</div>
+                            <div class="num" style="font-size:13px">${stage4Done ? '已定标' : '待定标'}</div>
+                            <div class="lbl">${stage4Done ? esc((inq.awarded_supplier_name || '').slice(0,8)) : '——'}</div>
+                        </div>
+                    </div>
+                    <div class="progress-thin"><div class="bar" style="width:${responseRate}%"></div></div>
+                </div>
+            `;
+        }).join("");
+    }
+
+    document.getElementById("filterTabs").addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-filter]");
+        if (!btn) return;
+        document.querySelectorAll("#filterTabs button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.dataset.filter;
+        render();
+    });
+
+    loadAll();
+    // 每 30 秒刷新倒计时
+    setInterval(() => { if (allInquiries.length) render(); }, 30000);
+})();
+</script>
+</body>
+</html>

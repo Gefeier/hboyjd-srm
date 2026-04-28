@@ -107,7 +107,29 @@ body { background: var(--gray-50); }
 .item-row select.has-cat { border-color: var(--blue-500); background: #eff6ff; color: var(--blue-700); font-weight: 500; }
 .item-row .del-btn { background: transparent; border: 1px solid var(--gray-200); color: var(--gray-400); width: 32px; height: 32px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; }
 .item-row .del-btn:hover { color: var(--danger-500); border-color: var(--danger-500); }
+.item-row .name-cell { display: flex; align-items: stretch; gap: 4px; }
+.item-row .name-cell input { flex: 1; min-width: 0; }
+.item-row .pick-btn { padding: 0 8px; background: var(--gray-50); color: var(--blue-600); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; font-size: 11px; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+.item-row .pick-btn:hover { background: var(--blue-50); border-color: var(--blue-400); }
 .item-row-head { display: grid; grid-template-columns: 2fr 1.6fr 1.8fr 0.7fr 1fr 1.4fr auto; gap: 8px; padding: 0 0 6px; font-size: 11px; color: var(--gray-400); }
+/* 物料主档抽屉 */
+.mat-modal { position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+.mat-modal.show { display: flex; }
+.mat-card { background: #fff; border-radius: var(--radius); width: 100%; max-width: 640px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+.mat-head { padding: 16px 22px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+.mat-head h4 { font-size: 15px; font-weight: 600; color: var(--navy-900); }
+.mat-head .close { background: transparent; border: none; font-size: 22px; color: var(--gray-400); cursor: pointer; }
+.mat-search { padding: 12px 22px; border-bottom: 1px solid var(--gray-100); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.mat-search input { flex: 1; min-width: 180px; padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; }
+.mat-search select { padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: #fff; cursor: pointer; }
+.mat-list { flex: 1; overflow-y: auto; }
+.mat-item { padding: 12px 22px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background 0.15s; }
+.mat-item:hover { background: var(--blue-50); }
+.mat-item .m-name { font-size: 14px; font-weight: 500; color: var(--navy-900); }
+.mat-item .m-meta { font-size: 12px; color: var(--gray-500); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mat-item .m-cat-chip { padding: 1px 7px; background: var(--blue-50); color: var(--blue-700); border-radius: 10px; font-size: 11px; }
+.mat-item .m-count { color: var(--ok-600); font-weight: 500; }
+.mat-empty { padding: 50px 20px; text-align: center; color: var(--gray-500); font-size: 13px; }
 .add-line-btn { margin-top: 10px; padding: 8px 14px; background: var(--blue-50); color: var(--blue-700); border: 1px dashed var(--blue-200); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: inherit; width: 100%; }
 .add-line-btn:hover { background: var(--blue-100); }
 
@@ -332,6 +354,23 @@ body { background: var(--gray-50); }
     </div>
 </div>
 
+<!-- 物料主档选择抽屉 -->
+<div class="mat-modal" id="matModal">
+    <div class="mat-card">
+        <div class="mat-head">
+            <h4>📚 从物料主档选择 <span style="font-size:12px;font-weight:400;color:var(--gray-500);margin-left:8px">点物料行带回名称/规格/单位/大类</span></h4>
+            <button class="close" id="matCloseBtn" type="button">&times;</button>
+        </div>
+        <div class="mat-search">
+            <input type="text" id="matSearchInput" placeholder="搜索名称或规格...">
+            <select id="matCatFilter">
+                <option value="">全部大类</option>
+            </select>
+        </div>
+        <div class="mat-list" id="matList"></div>
+    </div>
+</div>
+
 <script src="../shared.js"></script>
 <script>
 (function () {
@@ -467,7 +506,10 @@ body { background: var(--gray-50); }
             : "";
         return `
             <div class="item-row">
-                <input name="name" placeholder="如:开平板">
+                <div class="name-cell">
+                    <input name="name" placeholder="如:开平板">
+                    <button type="button" class="pick-btn" data-pick title="从物料主档选(历史用过的物料)">📚 选</button>
+                </div>
                 <select name="category" title="选物料大类后,系统自动推荐相关供应商置顶">
                     <option value="">— 选大类 —</option>
                     ${opts}
@@ -490,6 +532,11 @@ body { background: var(--gray-50); }
         if (e.target.closest("[data-del]")) {
             e.target.closest(".item-row").remove();
             recomputeActiveCategoryFilters();
+            return;
+        }
+        const pickBtn = e.target.closest("[data-pick]");
+        if (pickBtn) {
+            openMaterialPicker(pickBtn.closest(".item-row"));
         }
     });
     // 物料行分类变化 → 自动同步 chip + 重渲染供应商
@@ -708,6 +755,99 @@ body { background: var(--gray-50); }
     closeBtn.addEventListener("click", closeModal);
     cancelBtn.addEventListener("click", closeModal);
     modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    // ============ 物料主档选择抽屉 ============
+    const matModal = document.getElementById("matModal");
+    const matCloseBtn = document.getElementById("matCloseBtn");
+    const matSearchInput = document.getElementById("matSearchInput");
+    const matCatFilter = document.getElementById("matCatFilter");
+    const matList = document.getElementById("matList");
+    let matTargetRow = null;
+    let matSearchTimer = null;
+
+    function openMaterialPicker(targetRow) {
+        matTargetRow = targetRow;
+        // 同步大类下拉(用 allCategoriesList,与 rowTpl 一致)
+        if (matCatFilter.options.length <= 1 && allCategoriesList.length) {
+            matCatFilter.innerHTML = '<option value="">全部大类</option>' +
+                allCategoriesList.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
+        }
+        // 默认带入当前行的大类作为筛选
+        const curCat = targetRow.querySelector('select[name=category]').value;
+        matCatFilter.value = curCat || "";
+        matSearchInput.value = "";
+        matModal.classList.add("show");
+        setTimeout(() => matSearchInput.focus(), 50);
+        loadMaterials();
+    }
+    function closeMaterialPicker() {
+        matModal.classList.remove("show");
+        matTargetRow = null;
+    }
+    matCloseBtn.addEventListener("click", closeMaterialPicker);
+    matModal.addEventListener("click", (e) => { if (e.target === matModal) closeMaterialPicker(); });
+
+    async function loadMaterials() {
+        const q = matSearchInput.value.trim();
+        const cat = matCatFilter.value;
+        const params = new URLSearchParams();
+        if (q) params.set("q", q);
+        if (cat) params.set("category", cat);
+        params.set("page_size", "50");
+        matList.innerHTML = '<div class="mat-empty">加载中...</div>';
+        try {
+            const res = await srmFetch("/api/v1/materials?" + params.toString());
+            if (!res.ok) throw new Error("加载失败");
+            const data = await res.json();
+            if (!data.items || data.items.length === 0) {
+                matList.innerHTML = '<div class="mat-empty">暂无匹配物料 — 主档为空时,继续手填即可,提交后将自动归档供下次复用</div>';
+                return;
+            }
+            matList.innerHTML = data.items.map(m => `
+                <div class="mat-item" data-id="${m.id}">
+                    <div class="m-name">${esc(m.name)}${m.spec ? ' <span style="color:var(--gray-500);font-weight:400">· '+esc(m.spec)+'</span>' : ''}</div>
+                    <div class="m-meta">
+                        ${m.category ? '<span class="m-cat-chip">'+esc(m.category)+'</span>' : ''}
+                        <span>单位: ${esc(m.unit)}</span>
+                        <span class="m-count">用过 ${m.use_count} 次</span>
+                        <span style="color:var(--gray-400)">最近: ${fmtDate(m.last_used_at)}</span>
+                    </div>
+                </div>
+            `).join("");
+            // 点击带回
+            matList.querySelectorAll(".mat-item").forEach(el => {
+                el.addEventListener("click", () => {
+                    const id = parseInt(el.dataset.id);
+                    const mat = data.items.find(x => x.id === id);
+                    if (mat && matTargetRow) applyMaterialToRow(matTargetRow, mat);
+                    closeMaterialPicker();
+                });
+            });
+        } catch (err) {
+            matList.innerHTML = '<div class="mat-empty" style="color:var(--danger-500)">加载失败: '+esc(err.message)+'</div>';
+        }
+    }
+
+    function applyMaterialToRow(row, mat) {
+        row.querySelector('[name=name]').value = mat.name || "";
+        row.querySelector('[name=spec]').value = mat.spec || "";
+        row.querySelector('[name=unit]').value = mat.unit || "个";
+        const catSel = row.querySelector('select[name=category]');
+        if (mat.category) {
+            catSel.value = mat.category;
+            catSel.classList.add('has-cat');
+        }
+        // 触发 change 让供应商推荐排序联动
+        recomputeActiveCategoryFilters();
+        // qty 留空,采购员自己填(每次询价数量不同)
+        row.querySelector('[name=qty]').focus();
+    }
+
+    matSearchInput.addEventListener("input", () => {
+        clearTimeout(matSearchTimer);
+        matSearchTimer = setTimeout(loadMaterials, 220);
+    });
+    matCatFilter.addEventListener("change", loadMaterials);
 
     submitBtn.addEventListener("click", async () => {
         const errEl = document.getElementById("formError");
