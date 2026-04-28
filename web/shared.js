@@ -493,9 +493,82 @@ function initAwardPicker() {
     });
 }
 
+/* ========== Admin 手机端汉堡菜单 ==========
+   admin 后台原本侧边栏在 ≤980px 被 display:none 隐藏导致没法导航。
+   这里自动注入一个汉堡按钮+抽屉式打开侧边栏。所有 admin 页面零改动获得此能力。
+*/
+function initAdminMobileNav() {
+    const aside = document.querySelector('.admin-aside');
+    if (!aside) return;  // 非 admin 页面跳过
+
+    const mq = window.matchMedia('(max-width: 980px)');
+
+    // 注入抽屉样式
+    const style = document.createElement('style');
+    style.textContent = `
+        @media (max-width: 980px) {
+            .admin-aside.is-mobile-open {
+                display: block !important;
+                position: fixed !important;
+                top: 0; left: 0; bottom: 0;
+                width: 280px; max-width: 86vw;
+                z-index: 9100;
+                overflow-y: auto;
+                box-shadow: 4px 0 24px rgba(0,0,0,0.25);
+                animation: admSlideIn 0.22s ease-out;
+                background: #fff;
+            }
+        }
+        @keyframes admSlideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+        #admMobileMenu:active { transform: scale(0.95); }
+    `;
+    document.head.appendChild(style);
+
+    // 汉堡按钮(fixed 左上角)
+    const btn = document.createElement('button');
+    btn.id = 'admMobileMenu';
+    btn.setAttribute('aria-label', '打开导航菜单');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="width:22px;height:22px"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
+    btn.style.cssText = 'position:fixed;top:12px;left:12px;z-index:9000;width:44px;height:44px;background:rgba(15,23,42,0.85);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);transition:transform 0.1s';
+    document.body.appendChild(btn);
+
+    // 遮罩
+    const mask = document.createElement('div');
+    mask.id = 'admMobileMask';
+    mask.style.cssText = 'position:fixed;inset:0;background:rgba(10,22,40,0.5);z-index:9000;display:none';
+    document.body.appendChild(mask);
+
+    function open() {
+        aside.classList.add('is-mobile-open');
+        mask.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+    function close() {
+        aside.classList.remove('is-mobile-open');
+        mask.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+    function syncBtn() {
+        if (mq.matches) {
+            btn.style.display = 'flex';
+        } else {
+            btn.style.display = 'none';
+            close();
+        }
+    }
+    syncBtn();
+    mq.addEventListener('change', syncBtn);
+
+    btn.addEventListener('click', open);
+    mask.addEventListener('click', close);
+    aside.addEventListener('click', (e) => { if (e.target.closest('a')) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && aside.classList.contains('is-mobile-open')) close(); });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initNavbar();
     initAuthNav();
+    initAdminMobileNav();
     initCountdowns();
     initWizard();
     initBidTable();
