@@ -879,15 +879,24 @@ body { background: var(--gray-50); }
 
     function renderRow(s) {
         const status = STATUS_META[s.status] || { label: s.status, cls: "pill-gray" };
-        const cats = (s.categories || []).slice(0, 3).map((c) => `<span class="st-tag">${escapeHTML(CAT_CN[c] || c)}</span>`).join("");
+        // 分类 tag (新11大类已经是中文,CAT_CN 仅作老数据 fallback)
+        const catList = (s.categories || []);
+        const cats = catList.slice(0, 4).map((c) => `<span class="st-tag" title="${escapeHTML(c)}">${escapeHTML(CAT_CN[c] || c)}</span>`).join("");
+        const moreTag = catList.length > 4 ? `<span class="st-tag" style="background:var(--gray-50);color:var(--gray-500)">+${catList.length - 4}</span>` : "";
+        // 排除询价标记
+        const excludedTag = s.excluded_from_rfq
+            ? `<span class="st-tag" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca" title="${escapeHTML(s.excluded_reason || '不参与询价')}">不询价</span>`
+            : "";
+        const tagsHtml = (cats + moreTag + excludedTag) || '<span style="color:var(--gray-400);font-size:12px">— 待打 tag</span>';
         const gradeCell = s.grade ? `<span class="st-grade g-${s.grade}">${s.grade}</span>` : `<span style="color:var(--gray-400);font-size:13px">未定级</span>`;
 
         const canReview = s.status === "pending";
         const canFreeze = s.status === "approved";
         const canUnfreeze = s.status === "frozen";
-        const canInquire = s.status === "approved" || s.status === "pending_profile";
+        const canInquire = (s.status === "approved" || s.status === "pending_profile") && !s.excluded_from_rfq;
         const actions = `
             <button class="icon-btn" title="查看档案" data-action="view" data-id="${s.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            <button class="icon-btn" title="编辑物料分类" data-action="edit-tags" data-id="${s.id}" style="color:var(--blue-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></button>
             ${canInquire ? `<button class="icon-btn" title="为此供应商新建询价" data-action="new-inquiry" data-id="${s.id}" data-name="${escapeHTML(s.company_name)}" style="color:var(--blue-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>` : ""}
             ${canReview ? `<button class="icon-btn" title="审核" data-action="review" data-id="${s.id}" style="color:var(--blue-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></button>` : ""}
             ${canFreeze ? `<button class="icon-btn" title="冻结" data-action="freeze" data-id="${s.id}" style="color:var(--warn-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>` : ""}
@@ -903,7 +912,7 @@ body { background: var(--gray-50); }
                     <div class="code">${escapeHTML(s.code)} · ${escapeHTML(s.unified_credit_code || "")} · 注册 ${formatDate(s.created_at)}</div>
                 </div>
             </div>
-            <div class="st-tags">${cats || '<span style="color:var(--gray-400);font-size:12px">—</span>'}</div>
+            <div class="st-tags">${tagsHtml}</div>
             <div>${gradeCell}</div>
             <div class="st-last">
                 <div class="amount num" style="color:var(--gray-500)">—</div>
@@ -1023,7 +1032,128 @@ body { background: var(--gray-50); }
         if (action === "new-inquiry") {
             openMiniInquiryModal(parseInt(id), btn.dataset.name);
         }
+
+        if (action === "edit-tags") {
+            openTagsModal(parseInt(id));
+        }
     });
+
+    /* ========== 编辑物料分类 + 是否参与询价 modal ========== */
+    let _categoryListCache = null;
+    async function getCategories() {
+        if (_categoryListCache) return _categoryListCache;
+        const res = await srmFetch("/api/v1/suppliers/_categories");
+        if (!res.ok) throw new Error("加载分类失败");
+        const d = await res.json();
+        _categoryListCache = d.items;
+        return d.items;
+    }
+
+    async function openTagsModal(supplierId) {
+        // 同时拉:供应商详情 + 分类列表
+        let supplier, categories;
+        try {
+            const [resS, cats] = await Promise.all([
+                srmFetch(`/api/v1/suppliers/${supplierId}`),
+                getCategories(),
+            ]);
+            if (!resS.ok) throw new Error("加载供应商失败");
+            supplier = await resS.json();
+            categories = cats;
+        } catch (err) { alert("加载失败: " + err.message); return; }
+
+        const selected = new Set(supplier.categories || []);
+        const isExcluded = !!supplier.excluded_from_rfq;
+        const reason = supplier.excluded_reason || "";
+
+        const mask = document.createElement("div");
+        mask.style.cssText = "position:fixed;inset:0;background:rgba(10,22,40,0.55);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:50px 20px;overflow-y:auto";
+        mask.innerHTML = `
+        <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;box-shadow:0 40px 80px rgba(0,0,0,0.3);overflow:hidden">
+            <div style="padding:20px 26px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:flex-start;gap:14px">
+                <div>
+                    <h3 style="font-size:16px;font-weight:600;color:#0a1628;margin:0 0 4px">编辑物料分类</h3>
+                    <div style="font-size:12px;color:#64748b">${escapeHTML(supplier.company_name)} · ${escapeHTML(supplier.code)}</div>
+                </div>
+                <button id="tgClose" style="background:transparent;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:0;width:32px;height:32px">&times;</button>
+            </div>
+            <div style="padding:20px 26px">
+                <div id="tgErr" style="display:none;padding:10px 14px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;font-size:13px;margin-bottom:14px"></div>
+
+                <div style="font-size:12px;color:#64748b;margin-bottom:8px">勾选该供应商主营的物料类型(可多选 · 影响新建询价时的候选名单)</div>
+                <div id="tgCats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:18px">
+                    ${categories.map(c => `
+                        <label style="display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border:1px solid ${selected.has(c.name) ? '#2563eb' : '#e2e8f0'};border-radius:8px;cursor:pointer;background:${selected.has(c.name) ? '#eff6ff' : '#fff'};transition:all 0.15s" data-cat-label="${escapeHTML(c.name)}">
+                            <input type="checkbox" data-cat="${escapeHTML(c.name)}" ${selected.has(c.name) ? 'checked' : ''} style="margin-top:2px;cursor:pointer">
+                            <div style="flex:1">
+                                <div style="font-size:13px;font-weight:500;color:#0a1628;line-height:1.3">${escapeHTML(c.name)}</div>
+                                ${c.hint ? `<div style="font-size:11px;color:#94a3b8;margin-top:3px;line-height:1.4">${escapeHTML(c.hint)}</div>` : ""}
+                            </div>
+                        </label>
+                    `).join("")}
+                </div>
+
+                <div style="border-top:1px solid #f1f5f9;padding-top:16px;margin-top:6px">
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;color:#0a1628;margin-bottom:10px">
+                        <input type="checkbox" id="tgExcl" ${isExcluded ? 'checked' : ''} style="cursor:pointer;width:16px;height:16px">
+                        <span><b>不参与 SRM 询价</b> <span style="color:#94a3b8;font-weight:400;font-size:12px">— 整车/内部公司/独家长期合同/设备采购等场景</span></span>
+                    </label>
+                    <input id="tgReason" type="text" placeholder="排除原因(选填,如:外购整车 / 独家供应 / 关联公司)" value="${escapeHTML(reason)}" maxlength="64" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit" ${isExcluded ? '' : 'disabled'}>
+                </div>
+
+                <div style="font-size:11.5px;color:#94a3b8;line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px;margin-top:14px">
+                    💡 系统初步分类基于近 12 个月的金蝶采购历史自动建议,采购主管可随时修改。
+                </div>
+            </div>
+            <div style="padding:14px 26px;border-top:1px solid #f1f5f9;background:#f8fafc;display:flex;justify-content:flex-end;gap:10px">
+                <button id="tgCancel" style="padding:9px 18px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;cursor:pointer;font-family:inherit">取消</button>
+                <button id="tgSave" style="padding:9px 22px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit">保存</button>
+            </div>
+        </div>`;
+        document.body.appendChild(mask);
+        const close = () => mask.remove();
+        mask.querySelector("#tgClose").addEventListener("click", close);
+        mask.querySelector("#tgCancel").addEventListener("click", close);
+        mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
+
+        // 复选框点击切换 label 边框颜色 + 排除开关联动 reason
+        mask.querySelectorAll("[data-cat]").forEach(cb => cb.addEventListener("change", () => {
+            const lbl = cb.closest("[data-cat-label]");
+            if (cb.checked) { lbl.style.borderColor = "#2563eb"; lbl.style.background = "#eff6ff"; }
+            else { lbl.style.borderColor = "#e2e8f0"; lbl.style.background = "#fff"; }
+        }));
+        const exclCb = mask.querySelector("#tgExcl");
+        const reasonIn = mask.querySelector("#tgReason");
+        exclCb.addEventListener("change", () => {
+            reasonIn.disabled = !exclCb.checked;
+            if (!exclCb.checked) reasonIn.value = "";
+        });
+
+        mask.querySelector("#tgSave").addEventListener("click", async () => {
+            const errEl = mask.querySelector("#tgErr");
+            errEl.style.display = "none";
+            const cats = Array.from(mask.querySelectorAll("[data-cat]:checked")).map(cb => cb.dataset.cat);
+            const body = {
+                categories: cats,
+                excluded_from_rfq: exclCb.checked,
+                excluded_reason: exclCb.checked ? (reasonIn.value.trim() || null) : null,
+            };
+            const btn = mask.querySelector("#tgSave");
+            btn.disabled = true; btn.textContent = "保存中...";
+            try {
+                const res = await srmFetch(`/api/v1/suppliers/${supplierId}/admin`, {
+                    method: "PATCH",
+                    body: JSON.stringify(body),
+                });
+                if (!res.ok) throw new Error((await res.json()).detail || "保存失败");
+                close();
+                refresh();
+            } catch (err) {
+                errEl.textContent = err.message; errEl.style.display = "block";
+                btn.disabled = false; btn.textContent = "保存";
+            }
+        });
+    }
 
     /* ========== 为单一供应商快速建询价模态框 ========== */
     function openMiniInquiryModal(supplierId, supplierName) {

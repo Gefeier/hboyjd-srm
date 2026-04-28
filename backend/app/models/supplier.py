@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Column, DateTime, Index, JSON, Numeric, String, Text, desc
+from sqlalchemy import Boolean, Column, DateTime, Index, JSON, Numeric, String, Text, desc
 from sqlmodel import Field, SQLModel
 
 
@@ -81,6 +81,14 @@ class Supplier(SQLModel, table=True):
 
     categories: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False, default=list))
     qualifications: list[dict] = Field(default_factory=list, sa_column=Column(JSON, nullable=False, default=list))
+
+    # 不参与 SRM 询价(整车/内部公司/设备/独家长期合同等不可比价场景)
+    excluded_from_rfq: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default="false"),
+    )
+    # 排除原因(展示用,可空)
+    excluded_reason: str | None = Field(default=None, sa_column=Column(String(64), nullable=True))
 
     created_at: datetime = Field(
         default_factory=utcnow,

@@ -104,13 +104,16 @@ def create_inquiry(
 ) -> InquiryDetail:
     # 验:供应商必须存在且非冻结
     suppliers = session.exec(select(Supplier).where(Supplier.id.in_(payload.supplier_ids))).all()
-    valid_ids = {s.id for s in suppliers if s.status != SupplierStatus.FROZEN}
     missing = set(payload.supplier_ids) - {s.id for s in suppliers}
     if missing:
         raise HTTPException(400, f"供应商不存在: {sorted(missing)}")
-    frozen = set(payload.supplier_ids) - valid_ids - missing
+    frozen = {s.id for s in suppliers if s.status == SupplierStatus.FROZEN}
     if frozen:
         raise HTTPException(400, "包含冻结供应商,请移除后再提交")
+    excluded = {s.company_name for s in suppliers if s.excluded_from_rfq}
+    if excluded:
+        raise HTTPException(400, f"以下供应商已标记不参与询价(整车/内部公司/独家等),请移除: {', '.join(sorted(excluded))}")
+    valid_ids = {s.id for s in suppliers if s.status != SupplierStatus.FROZEN and not s.excluded_from_rfq}
 
     inquiry = Inquiry(
         code=generate_inquiry_code(session),

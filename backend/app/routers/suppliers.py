@@ -6,6 +6,7 @@ from jose import JWTError
 from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
+from app.constants import MATERIAL_CATEGORIES, MATERIAL_CATEGORY_HINTS
 from app.db import get_session
 from app.deps import get_current_user, require_buyer_or_admin
 from app.models.supplier import Supplier, SupplierGrade, SupplierSource, SupplierStatus
@@ -15,6 +16,9 @@ from app.schemas.supplier import (
     AdminCreateSupplierResponse,
     ChangePasswordRequest,
     FreezeRequest,
+    MaterialCategoryItem,
+    MaterialCategoryListResponse,
+    SupplierAdminUpdate,
     SupplierListResponse,
     SupplierProfileUpdate,
     SupplierRead,
@@ -293,6 +297,60 @@ def review_supplier(
     supplier.review_note = payload.note
     supplier.reviewed_by = current_user.id
     supplier.reviewed_at = datetime.now(UTC)
+    supplier.updated_at = datetime.now(UTC)
+    session.add(supplier)
+    session.commit()
+    session.refresh(supplier)
+    return SupplierRead.model_validate(supplier)
+
+
+@router.get("/_categories", response_model=MaterialCategoryListResponse)
+def list_material_categories(_: User = Depends(get_current_user)) -> MaterialCategoryListResponse:
+    """SRM 物料大类列表 — 11 个比价范围内的固定分类。前端勾选/筛选用。"""
+    return MaterialCategoryListResponse(
+        items=[
+            MaterialCategoryItem(name=c, hint=MATERIAL_CATEGORY_HINTS.get(c, ""))
+            for c in MATERIAL_CATEGORIES
+        ]
+    )
+
+
+@router.patch("/{supplier_id}/admin", response_model=SupplierRead)
+def admin_update_supplier(
+    supplier_id: int,
+    payload: SupplierAdminUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_buyer_or_admin),
+) -> SupplierRead:
+    """采购主管/采购员编辑供应商分类 tag 与"是否参与询价"开关。"""
+    supplier = session.get(Supplier, supplier_id)
+    if not supplier:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="供应商不存在")
+
+    data = payload.model_dump(exclude_unset=True)
+    if not data:
+        raise HTTPException(status_code=400, detail="未提供任何修改内容")
+
+    if "categories" in data:
+        # 校验 — 落地的 tag 必须在 11 大类内(防前端误传/接口被滥用)
+        cats = data["categories"] or []
+        invalid = [c for c in cats if c not in MATERIAL_CATEGORIES]
+        if invalid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"无效的物料分类: {invalid}。请使用预定义的 11 个大类。",
+            )
+        # 去重保序
+        supplier.categories = list(dict.fromkeys(cats))
+
+    if "excluded_from_rfq" in data:
+        supplier.excluded_from_rfq = bool(data["excluded_from_rfq"])
+        if not supplier.excluded_from_rfq:
+            supplier.excluded_reason = None  # 取消排除时清掉理由
+
+    if "excluded_reason" in data:
+        supplier.excluded_reason = (data["excluded_reason"] or "").strip() or None
+
     supplier.updated_at = datetime.now(UTC)
     session.add(supplier)
     session.commit()

@@ -13,3 +13,6 @@ backend/uploads/
 dist/
 build/
 .tmp/
+
+# 临时分析产物 — 含金蝶敏感数据(供应商/物料/价格), 严禁推到公网
+temp/

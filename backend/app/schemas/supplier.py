@@ -190,6 +190,8 @@ class SupplierRead(BaseModel):
     reviewed_at: datetime | None = None
     categories: list[str]
     qualifications: list[dict]
+    excluded_from_rfq: bool = False
+    excluded_reason: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -199,6 +201,23 @@ class SupplierListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class SupplierAdminUpdate(BaseModel):
+    """采购主管端编辑 — 改物料分类 tag、不参与询价开关。
+    所有字段都是可选(unset 不动);传空列表会清空 tag。"""
+    categories: list[str] | None = None
+    excluded_from_rfq: bool | None = None
+    excluded_reason: str | None = Field(default=None, max_length=64)
+
+
+class MaterialCategoryItem(BaseModel):
+    name: str
+    hint: str = ""
+
+
+class MaterialCategoryListResponse(BaseModel):
+    items: list[MaterialCategoryItem]
 
 
 class SupplierReviewRequest(BaseModel):
