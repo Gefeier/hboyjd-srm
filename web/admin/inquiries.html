@@ -101,11 +101,13 @@ body { background: var(--gray-50); }
 .fld textarea { resize: vertical; min-height: 62px; }
 
 /* 物料行 */
-.item-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 2fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
-.item-row input { padding: 7px 10px; font-size: 13px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-family: inherit; }
+.item-row { display: grid; grid-template-columns: 2fr 1.6fr 1.8fr 0.7fr 1fr 1.4fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+.item-row input, .item-row select { padding: 7px 10px; font-size: 13px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-family: inherit; background: #fff; }
+.item-row select { cursor: pointer; }
+.item-row select.has-cat { border-color: var(--blue-500); background: #eff6ff; color: var(--blue-700); font-weight: 500; }
 .item-row .del-btn { background: transparent; border: 1px solid var(--gray-200); color: var(--gray-400); width: 32px; height: 32px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; }
 .item-row .del-btn:hover { color: var(--danger-500); border-color: var(--danger-500); }
-.item-row-head { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 2fr auto; gap: 8px; padding: 0 0 6px; font-size: 11px; color: var(--gray-400); }
+.item-row-head { display: grid; grid-template-columns: 2fr 1.6fr 1.8fr 0.7fr 1fr 1.4fr auto; gap: 8px; padding: 0 0 6px; font-size: 11px; color: var(--gray-400); }
 .add-line-btn { margin-top: 10px; padding: 8px 14px; background: var(--blue-50); color: var(--blue-700); border: 1px dashed var(--blue-200); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: inherit; width: 100%; }
 .add-line-btn:hover { background: var(--blue-100); }
 
@@ -289,6 +291,7 @@ body { background: var(--gray-50); }
                     <h5>物料清单 <span class="hint">可选 · 留空则由供应商自行列报价明细</span></h5>
                     <div class="item-row-head">
                         <div>物料名称 *</div>
+                        <div>物料大类 <span style="color:var(--blue-600)">★</span></div>
                         <div>规格/型号</div>
                         <div>单位</div>
                         <div>数量 *</div>
@@ -459,10 +462,17 @@ body { background: var(--gray-50); }
     const selectedIds = new Set();
 
     function rowTpl() {
+        const opts = allCategoriesList.length
+            ? allCategoriesList.map(c => `<option value="${esc(c.name)}" title="${esc(c.hint)}">${esc(c.name)}</option>`).join("")
+            : "";
         return `
             <div class="item-row">
-                <input name="name" placeholder="如:六角螺栓M12">
-                <input name="spec" placeholder="如:GB/T5782 8.8级 镀锌">
+                <input name="name" placeholder="如:开平板">
+                <select name="category" title="选物料大类后,系统自动推荐相关供应商置顶">
+                    <option value="">— 选大类 —</option>
+                    ${opts}
+                </select>
+                <input name="spec" placeholder="如:Q235B 5mm 1500*6000">
                 <input name="unit" placeholder="个" value="个">
                 <input name="qty" type="number" min="0" step="0.01" placeholder="0">
                 <input name="remark" placeholder="选填">
@@ -479,11 +489,65 @@ body { background: var(--gray-50); }
     itemRows.addEventListener("click", (e) => {
         if (e.target.closest("[data-del]")) {
             e.target.closest(".item-row").remove();
+            recomputeActiveCategoryFilters();
+        }
+    });
+    // 物料行分类变化 → 自动同步 chip + 重渲染供应商
+    itemRows.addEventListener("change", (e) => {
+        if (e.target.matches('select[name=category]')) {
+            const sel = e.target;
+            sel.classList.toggle('has-cat', !!sel.value);
+            recomputeActiveCategoryFilters();
         }
     });
 
-    let activeCategoryFilters = new Set();  // 当前勾选的物料类(空=全部)
+    let activeCategoryFilters = new Set();  // 当前生效的(= manual ∪ items)
+    let manualCategoryChips = new Set();    // 用户手动勾的 chip
     let allCategoriesList = [];
+
+    // 轻量 toast(提示)
+    let _toastTimer = null;
+    function showToast(text, duration = 2400) {
+        let t = document.getElementById('_toastBox');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = '_toastBox';
+            t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:#fff;padding:10px 18px;border-radius:8px;font-size:13.5px;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,0.2);max-width:80vw;display:none;backdrop-filter:blur(4px)';
+            document.body.appendChild(t);
+        }
+        t.textContent = text;
+        t.style.display = 'block';
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => { t.style.display = 'none'; }, duration);
+    }
+
+    function categoriesFromItems() {
+        const set = new Set();
+        document.querySelectorAll('#itemRows select[name=category]').forEach(s => {
+            if (s.value) set.add(s.value);
+        });
+        return set;
+    }
+    function recomputeActiveCategoryFilters() {
+        activeCategoryFilters = new Set([...manualCategoryChips, ...categoriesFromItems()]);
+        // 同步 chip 视觉
+        document.querySelectorAll('[data-cat-chip]').forEach(b => {
+            const cat = b.dataset.catChip;
+            const fromManual = manualCategoryChips.has(cat);
+            const fromItem = categoriesFromItems().has(cat);
+            const active = fromManual || fromItem;
+            if (active) {
+                b.style.background = "#2563eb"; b.style.color = "#fff"; b.style.borderColor = "#2563eb";
+                b.title = fromItem && !fromManual ? `已自动勾选(物料行带出 · 不可在此取消,改物料行的分类下拉)` : (b.dataset.hint || '');
+            } else {
+                b.style.background = "#fff"; b.style.color = "#475569"; b.style.borderColor = "#e2e8f0";
+                b.title = b.dataset.hint || '';
+            }
+        });
+        // 重渲染供应商列表
+        const searchEl = document.getElementById('supplierSearch');
+        renderSuppliers(searchEl ? searchEl.value : '');
+    }
 
     async function loadCategoryChips() {
         const chipBox = document.getElementById("categoryChips");
@@ -493,7 +557,7 @@ body { background: var(--gray-50); }
             const d = await res.json();
             allCategoriesList = d.items;
             chipBox.innerHTML = d.items.map(c => `
-                <button type="button" data-cat-chip="${esc(c.name)}" title="${esc(c.hint)}"
+                <button type="button" data-cat-chip="${esc(c.name)}" data-hint="${esc(c.hint)}" title="${esc(c.hint)}"
                     style="padding:5px 12px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;cursor:pointer;font-size:12px;color:#475569;font-family:inherit;transition:all 0.15s">
                     ${esc(c.name)}
                 </button>
@@ -502,14 +566,14 @@ body { background: var(--gray-50); }
                 const btn = e.target.closest("[data-cat-chip]");
                 if (!btn) return;
                 const cat = btn.dataset.catChip;
-                if (activeCategoryFilters.has(cat)) {
-                    activeCategoryFilters.delete(cat);
-                    btn.style.background = "#fff"; btn.style.color = "#475569"; btn.style.borderColor = "#e2e8f0";
-                } else {
-                    activeCategoryFilters.add(cat);
-                    btn.style.background = "#2563eb"; btn.style.color = "#fff"; btn.style.borderColor = "#2563eb";
+                // 物料行带出的不能从 chip 取消(防止误操作),要去物料行改
+                if (categoriesFromItems().has(cat) && !manualCategoryChips.has(cat)) {
+                    showToast("该分类由物料行自动带出,如需取消请到物料行改分类下拉");
+                    return;
                 }
-                renderSuppliers(document.getElementById("supplierSearch").value);
+                if (manualCategoryChips.has(cat)) manualCategoryChips.delete(cat);
+                else manualCategoryChips.add(cat);
+                recomputeActiveCategoryFilters();
             });
         } catch (err) {
             chipBox.innerHTML = `<span style="font-size:12px;color:#dc2626">分类加载失败: ${esc(err.message)}</span>`;
@@ -618,22 +682,23 @@ body { background: var(--gray-50); }
         renderSuppliers(e.target.value);
     });
 
-    function openModal() {
+    async function openModal() {
         // reset
         document.getElementById("createForm").reset();
         itemRows.innerHTML = "";
-        // 默认不加行 — 留空让采购员按需添加或完全不填
         selectedIds.clear();
         selectedCount.textContent = "已选 0 家";
         document.getElementById("formError").hidden = true;
         document.getElementById("supplierSearch").value = "";
-        // 清空物料类过滤
+        // 清空物料类过滤(both manual + items)
         activeCategoryFilters.clear();
+        manualCategoryChips.clear();
         document.querySelectorAll("[data-cat-chip]").forEach(b => {
             b.style.background = "#fff"; b.style.color = "#475569"; b.style.borderColor = "#e2e8f0";
         });
         modal.classList.add("is-open");
-        if (allCategoriesList.length === 0) loadCategoryChips();
+        // 必须先加载分类(rowTpl 会用到),再加供应商
+        if (allCategoriesList.length === 0) await loadCategoryChips();
         loadSuppliers();
     }
     function closeModal() { modal.classList.remove("is-open"); }
@@ -661,6 +726,7 @@ body { background: var(--gray-50); }
                 unit: row.querySelector('[name=unit]').value.trim() || "个",
                 qty,
                 remark: row.querySelector('[name=remark]').value.trim() || null,
+                category: row.querySelector('[name=category]').value || null,
             });
         }
         // items 可选:留空则供应商自由报价

@@ -14,6 +14,7 @@ class InquiryItemCreate(BaseModel):
     unit: str = Field(default="个", max_length=16)
     qty: Decimal = Field(gt=0)
     remark: str | None = Field(default=None, max_length=256)
+    category: str | None = Field(default=None, max_length=64)  # 11大类之一,用于自动推荐供应商
 
 
 class InquiryCreate(BaseModel):
@@ -36,6 +37,7 @@ class InquiryItemRead(BaseModel):
     qty: Decimal
     remark: str | None = None
     sort_order: int = 0
+    category: str | None = None
 
 
 class SupplierMini(BaseModel):

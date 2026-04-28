@@ -92,6 +92,8 @@ class InquiryItem(SQLModel, table=True):
     qty: Decimal = Field(sa_column=Column(Numeric(14, 2), nullable=False))
     remark: str | None = Field(default=None, sa_column=Column(String(256), nullable=True))
     sort_order: int = Field(default=0, sa_column=Column(Integer, nullable=False, server_default="0"))
+    # 物料大类(11 大类之一,可空) — 用于在新建询价时自动推荐供应商
+    category: str | None = Field(default=None, sa_column=Column(String(64), nullable=True))
 
 
 class InquiryInvite(SQLModel, table=True):

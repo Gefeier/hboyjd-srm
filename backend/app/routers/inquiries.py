@@ -129,7 +129,10 @@ def create_inquiry(
     session.flush()  # 拿到 inquiry.id
 
     # 物料行
+    from app.constants import MATERIAL_CATEGORIES
     for idx, it in enumerate(payload.items):
+        # 校验 category 在 11 大类内,不在则置空(防错填,不阻断)
+        cat = it.category if it.category in MATERIAL_CATEGORIES else None
         session.add(InquiryItem(
             inquiry_id=inquiry.id,
             name=it.name.strip(),
@@ -138,6 +141,7 @@ def create_inquiry(
             qty=it.qty,
             remark=it.remark,
             sort_order=idx,
+            category=cat,
         ))
 
     # 邀标 + 自动生成 magic link token
