@@ -304,7 +304,7 @@ body { background: var(--gray-50); }
                     <h5>邀请供应商 <span class="hint">至少勾选1家,推荐3-5家进行比价</span></h5>
                     <div class="supplier-picker">
                         <div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                            <div style="font-size:11.5px;color:#64748b;margin-bottom:6px">按物料大类筛选(可多选,留空表示全部)</div>
+                            <div style="font-size:11.5px;color:#64748b;margin-bottom:6px">勾选物料大类 → 系统将相关供应商置顶<span style="color:#94a3b8">(全库都可见,不做过滤,保障比价真实性)</span></div>
                             <div id="categoryChips" style="display:flex;flex-wrap:wrap;gap:6px">
                                 <span style="font-size:12px;color:#94a3b8">加载中...</span>
                             </div>
@@ -528,46 +528,76 @@ body { background: var(--gray-50); }
     }
     function renderSuppliers(kw) {
         kw = (kw || "").trim().toLowerCase();
-        // 1. 排除掉 excluded_from_rfq 的供应商(整车/内部公司/独家等)
-        let filtered = allSuppliers.filter(s => !s.excluded_from_rfq);
-        // 2. 按物料类筛选(任一类匹中即列出)
-        if (activeCategoryFilters.size > 0) {
-            filtered = filtered.filter(s =>
-                (s.categories || []).some(c => activeCategoryFilters.has(c))
-            );
-        }
-        // 3. 关键字
+        // 1. 硬规则:排除 excluded_from_rfq 的供应商(整车/内部公司/独家等业务规则)
+        let visible = allSuppliers.filter(s => !s.excluded_from_rfq);
+        // 2. 关键字过滤 — 这个是采购员主动搜的,可以过
         if (kw) {
-            filtered = filtered.filter(s =>
+            visible = visible.filter(s =>
                 (s.company_name || "").toLowerCase().includes(kw) ||
                 (s.contact_name || "").toLowerCase().includes(kw) ||
                 (s.contact_phone || "").includes(kw)
             );
         }
+        // 3. 关键转变:物料类 chip 不再过滤,只算"匹配分"用于置顶排序
+        // 比价池永远是全库 — 主管 tag 错/没打不会让任何供应商消失
+        const matchScore = (s) => {
+            if (activeCategoryFilters.size === 0) return 0;
+            const cats = s.categories || [];
+            return cats.filter(c => activeCategoryFilters.has(c)).length;
+        };
+        // 排序:匹配分高的在前,同分按 grade(A>B>C>D)再按公司名
+        const gradeOrder = { A: 1, B: 2, C: 3, D: 4 };
+        visible.sort((a, b) => {
+            const da = matchScore(b) - matchScore(a);
+            if (da !== 0) return da;
+            const ga = (gradeOrder[a.grade] || 9) - (gradeOrder[b.grade] || 9);
+            if (ga !== 0) return ga;
+            return (a.company_name || "").localeCompare(b.company_name || "", "zh-CN");
+        });
+
+        const recommended_count = activeCategoryFilters.size > 0
+            ? visible.filter(s => matchScore(s) > 0).length
+            : 0;
         const excluded_count = allSuppliers.filter(s => s.excluded_from_rfq).length;
-        const cat_hint = activeCategoryFilters.size > 0
-            ? ` · 已按 ${activeCategoryFilters.size} 个物料类过滤`
-            : "";
-        const banner = `<div style="padding:8px 14px;font-size:11.5px;color:#94a3b8;border-bottom:1px solid #f1f5f9;background:#fafbfc">
-            候选 ${filtered.length} 家${cat_hint}${excluded_count ? ` · 已自动排除 ${excluded_count} 家不参与询价` : ""}
+        const banner_parts = [`候选 ${visible.length} 家`];
+        if (recommended_count > 0) banner_parts.push(`<b style="color:#2563eb">系统推荐 ${recommended_count} 家已置顶</b>`);
+        if (excluded_count > 0) banner_parts.push(`已排除 ${excluded_count} 家不参与询价`);
+        const banner = `<div style="padding:8px 14px;font-size:11.5px;color:#475569;border-bottom:1px solid #f1f5f9;background:#fafbfc">
+            ${banner_parts.join(" · ")}
         </div>`;
 
-        if (!filtered.length) {
-            const why = activeCategoryFilters.size > 0
-                ? "当前物料类筛选下没有匹配的供应商,试试取消几个分类或先去「合格供应商库」给供应商打 tag"
-                : (kw ? "没有匹配的供应商" : "还没有已审核通过的供应商,请先去「合格供应商库」审核");
+        if (!visible.length) {
+            const why = kw ? "没有匹配的供应商" : "还没有已审核通过的供应商,请先去「合格供应商库」审核";
             supplierList.innerHTML = banner + `<div style="padding:30px;text-align:center;color:var(--gray-400);font-size:13px">${why}</div>`;
             return;
         }
-        supplierList.innerHTML = banner + filtered.map(s => {
-            const tagHtml = (s.categories || []).slice(0, 3).map(c =>
-                `<span style="font-size:10.5px;padding:1px 7px;background:#eef2f9;color:#475569;border-radius:8px;margin-right:3px">${esc(c)}</span>`
-            ).join("");
-            return `
-            <label class="sp-item">
+
+        // 渲染时,如果已勾 chip 且某条匹配分>0,显示"推荐"标识 + 浅蓝底
+        let firstNonRecommendedShown = false;
+        const rowsHtml = visible.map(s => {
+            const score = matchScore(s);
+            const isRecommended = activeCategoryFilters.size > 0 && score > 0;
+            // 在第一条"非推荐"前插入分隔符
+            let separator = "";
+            if (activeCategoryFilters.size > 0 && !isRecommended && !firstNonRecommendedShown && recommended_count > 0) {
+                separator = `<div style="padding:6px 14px;font-size:11px;color:#94a3b8;background:#f8fafc;border-top:1px dashed #e2e8f0;border-bottom:1px solid #f1f5f9">— 以下为其他供应商(可选,保障比价真实性)—</div>`;
+                firstNonRecommendedShown = true;
+            }
+            const recBadge = isRecommended
+                ? `<span style="font-size:10px;padding:1px 6px;background:#dbeafe;color:#1d4ed8;border-radius:4px;margin-right:6px;font-weight:500">★ 推荐</span>`
+                : "";
+            const rowBg = isRecommended ? "background:#f5f9ff" : "";
+            const tagHtml = (s.categories || []).slice(0, 3).map(c => {
+                const isMatched = activeCategoryFilters.has(c);
+                const bg = isMatched ? "#dbeafe" : "#eef2f9";
+                const fg = isMatched ? "#1d4ed8" : "#475569";
+                return `<span style="font-size:10.5px;padding:1px 7px;background:${bg};color:${fg};border-radius:8px;margin-right:3px;font-weight:${isMatched?500:400}">${esc(c)}</span>`;
+            }).join("");
+            return separator + `
+            <label class="sp-item" style="${rowBg}">
                 <input type="checkbox" value="${s.id}" ${selectedIds.has(s.id) ? "checked" : ""}>
                 <div style="flex:1">
-                    <div class="sp-name">${esc(s.company_name)}</div>
+                    <div class="sp-name">${recBadge}${esc(s.company_name)}</div>
                     <div class="sp-meta" style="margin-top:2px">
                         ${tagHtml}
                         ${esc(s.code)}${s.contact_name ? " · " + esc(s.contact_name) : ""}${s.contact_phone ? " · " + esc(s.contact_phone) : ""}${s.grade ? " · " + esc(s.grade) + "级" : ""}
@@ -575,6 +605,7 @@ body { background: var(--gray-50); }
                 </div>
             </label>`;
         }).join("");
+        supplierList.innerHTML = banner + rowsHtml;
     }
     supplierList.addEventListener("change", (e) => {
         if (e.target.matches('input[type="checkbox"]')) {
