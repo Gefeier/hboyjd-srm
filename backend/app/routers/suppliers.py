@@ -14,6 +14,9 @@ from app.models.user import User, UserRole
 from app.schemas.supplier import (
     AdminCreateSupplier,
     AdminCreateSupplierResponse,
+    BatchImportRequest,
+    BatchImportResponse,
+    BatchImportItemResult,
     ChangePasswordRequest,
     FreezeRequest,
     MaterialCategoryItem,
@@ -267,6 +270,118 @@ def list_suppliers(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.post("/admin/batch-import", response_model=BatchImportResponse)
+def batch_import_suppliers(
+    payload: BatchImportRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_buyer_or_admin),
+) -> BatchImportResponse:
+    """金蝶供应商批量导入。
+    - 数据来源:本地脚本拉金蝶 BD_Supplier + 基于采购历史聚类得到草稿 tag
+    - 安全边界:**只导入名字/电话/地址/草稿tag**,绝不导入金蝶价格/采购量数据
+    - 已存在(按公司名)的供应商,默认仅在 categories 为空时补 tag,不覆盖人工修改
+    - 新建的供应商默认 status=approved + source=kingdee_import,
+      login_username=kd_<kingdee_no> 用于唯一标识(实际不会用密码登录,走 magic link)
+    """
+    import secrets
+    import string
+
+    created_count = 0
+    updated_count = 0
+    skipped_count = 0
+    results: list[BatchImportItemResult] = []
+
+    for item in payload.items:
+        try:
+            # 标准化 tag:必须在 11 大类内,过滤掉无效的
+            valid_cats = [c for c in item.categories if c in MATERIAL_CATEGORIES]
+            valid_cats = list(dict.fromkeys(valid_cats))  # 去重保序
+
+            # 按公司名查重
+            existing = session.exec(
+                select(Supplier).where(Supplier.company_name == item.company_name)
+            ).first()
+
+            if existing:
+                # 已存在:仅在 categories 空时补,避免覆盖人工修改
+                if not existing.categories and valid_cats and not payload.skip_if_categories_exist is False:
+                    existing.categories = valid_cats
+                    existing.updated_at = datetime.now(UTC)
+                    session.add(existing)
+                    updated_count += 1
+                    results.append(BatchImportItemResult(
+                        company_name=item.company_name, action="updated_categories",
+                        supplier_id=existing.id, code=existing.code,
+                        categories=valid_cats, note="补全草稿tag",
+                    ))
+                else:
+                    skipped_count += 1
+                    note = "已存在且tag已设" if existing.categories else "已存在(无新tag可补)"
+                    results.append(BatchImportItemResult(
+                        company_name=item.company_name, action="skipped",
+                        supplier_id=existing.id, code=existing.code,
+                        categories=existing.categories, note=note,
+                    ))
+                continue
+
+            # 不存在 → 创建
+            # username: 优先用 kingdee_no(保证唯一),否则随机
+            if item.kingdee_no:
+                username = f"kd_{item.kingdee_no}"
+            else:
+                username = f"kd_{secrets.token_hex(4)}"
+            # 检查 username 不冲突
+            collision = session.exec(select(Supplier).where(Supplier.login_username == username)).first()
+            if collision:
+                username = f"kd_{secrets.token_hex(6)}"  # 加长重试
+
+            # 占位密码(永不告知,这些供应商走 magic link 不需要登录)
+            placeholder_pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(20))
+
+            new_sup = Supplier(
+                code=generate_supplier_code(session),
+                company_name=item.company_name,
+                contact_phone=(item.contact_phone or "").strip() or "00000000000",  # 占位,主管后续补
+                contact_name=item.contact_name,
+                unified_credit_code=item.unified_credit_code,
+                registered_address=item.registered_address,
+                login_username=username,
+                login_password_hash=get_password_hash(placeholder_pwd),
+                status=SupplierStatus.APPROVED,  # 已合作的视为已通过
+                source=SupplierSource.KINGDEE_IMPORT,
+                categories=valid_cats,
+            )
+            session.add(new_sup)
+            session.flush()  # 拿 id,但还没 commit
+            created_count += 1
+            results.append(BatchImportItemResult(
+                company_name=item.company_name, action="created",
+                supplier_id=new_sup.id, code=new_sup.code,
+                categories=valid_cats,
+            ))
+        except Exception as e:
+            skipped_count += 1
+            results.append(BatchImportItemResult(
+                company_name=item.company_name, action="skipped",
+                note=f"错误: {str(e)[:100]}",
+            ))
+
+    session.commit()
+    print(
+        f"[batch-import] user={current_user.username} total={len(payload.items)} "
+        f"created={created_count} updated={updated_count} skipped={skipped_count}",
+        flush=True,
+    )
+
+    return BatchImportResponse(
+        total=len(payload.items),
+        created=created_count,
+        updated=updated_count,
+        skipped=skipped_count,
+        items=results,
     )
 
 

@@ -220,6 +220,41 @@ class MaterialCategoryListResponse(BaseModel):
     items: list[MaterialCategoryItem]
 
 
+# ============== 金蝶批量导入 ==============
+
+class BatchImportItem(BaseModel):
+    """单条导入数据 — 来源金蝶 BD_Supplier + 草稿tag(基于采购历史聚类)"""
+    company_name: str = Field(min_length=2, max_length=128)
+    contact_phone: str | None = None  # 金蝶很多供应商无电话字段,可空
+    contact_name: str | None = None
+    unified_credit_code: str | None = None
+    registered_address: str | None = None
+    categories: list[str] = []  # 草稿 tag(本地脚本基于历史采购聚类得出)
+    kingdee_no: str | None = None  # 金蝶供应商编号(冗余记录用,如 VEN00109)
+
+
+class BatchImportRequest(BaseModel):
+    items: list[BatchImportItem] = Field(min_length=1, max_length=500)
+    skip_if_categories_exist: bool = True  # 默认:已有 tag 的不动(避免覆盖人工修改)
+
+
+class BatchImportItemResult(BaseModel):
+    company_name: str
+    action: str  # created / updated_categories / skipped
+    supplier_id: int | None = None
+    code: str | None = None
+    note: str | None = None
+    categories: list[str] = []
+
+
+class BatchImportResponse(BaseModel):
+    total: int
+    created: int
+    updated: int
+    skipped: int
+    items: list[BatchImportItemResult]
+
+
 class SupplierReviewRequest(BaseModel):
     action: str
     note: str | None = None
