@@ -270,6 +270,18 @@ def list_suppliers(
     )
 
 
+# 注意:此路由必须放在 /{supplier_id} 之前,否则 FastAPI 会把 _categories 当成 supplier_id=int 解析失败
+@router.get("/_categories", response_model=MaterialCategoryListResponse)
+def list_material_categories(_: User = Depends(get_current_user)) -> MaterialCategoryListResponse:
+    """SRM 物料大类列表 — 11 个比价范围内的固定分类。前端勾选/筛选用。"""
+    return MaterialCategoryListResponse(
+        items=[
+            MaterialCategoryItem(name=c, hint=MATERIAL_CATEGORY_HINTS.get(c, ""))
+            for c in MATERIAL_CATEGORIES
+        ]
+    )
+
+
 @router.get("/{supplier_id}", response_model=SupplierRead)
 def get_supplier(
     supplier_id: int,
@@ -302,17 +314,6 @@ def review_supplier(
     session.commit()
     session.refresh(supplier)
     return SupplierRead.model_validate(supplier)
-
-
-@router.get("/_categories", response_model=MaterialCategoryListResponse)
-def list_material_categories(_: User = Depends(get_current_user)) -> MaterialCategoryListResponse:
-    """SRM 物料大类列表 — 11 个比价范围内的固定分类。前端勾选/筛选用。"""
-    return MaterialCategoryListResponse(
-        items=[
-            MaterialCategoryItem(name=c, hint=MATERIAL_CATEGORY_HINTS.get(c, ""))
-            for c in MATERIAL_CATEGORIES
-        ]
-    )
 
 
 @router.patch("/{supplier_id}/admin", response_model=SupplierRead)
